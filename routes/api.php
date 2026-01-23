@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware('jwt.auth')->group(function() {
     Route::get('me', 'App\Http\Controllers\AuthController@me');
     Route::post('logout', 'App\Http\Controllers\AuthController@logout');
+    Route::get('marca/all', 'App\Http\Controllers\MarcaController@all');
     Route::apiResource('cliente', 'App\Http\Controllers\ClienteController');
     Route::apiResource('carro', 'App\Http\Controllers\CarroController');
     Route::apiResource('locacao', 'App\Http\Controllers\LocacaoController');

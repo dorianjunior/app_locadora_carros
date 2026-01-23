@@ -35,9 +35,9 @@ class ModeloController extends Controller
 
         if($request->has('atributos')) {
             $modeloRepository->selectAtributos($request->atributos);
-        } 
+        }
 
-        return response()->json($modeloRepository->getResultado(), 200);
+        return response()->json($modeloRepository->getResultadoPaginado(10), 200);
     }
 
     /**
@@ -58,22 +58,36 @@ class ModeloController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate($this->modelo->rules());
+        try {
+            $request->validate($this->modelo->rules(), $this->modelo->feedback());
 
-        $imagem = $request->file('imagem');
-        $imagem_urn = $imagem->store('imagens/modelos', 'public');
+            if (!$request->hasFile('imagem')) {
+                return response()->json([
+                    'message' => 'Erro ao criar modelo',
+                    'errors' => ['imagem' => ['A imagem é obrigatória']]
+                ], 422);
+            }
 
-        $modelo = $this->modelo->create([
-            'marca_id' => $request->marca_id,
-            'nome' => $request->nome,
-            'imagem' => $imagem_urn,
-            'numero_portas' => $request->numero_portas,
-            'lugares' => $request->lugares,
-            'air_bag' => $request->air_bag,
-            'abs' => $request->abs
-        ]);
+            $imagem = $request->file('imagem');
+            $imagem_urn = $imagem->store('imagens/modelos', 'public');
 
-        return response()->json($modelo, 201);
+            $modelo = $this->modelo->create([
+                'marca_id' => $request->marca_id,
+                'nome' => $request->nome,
+                'imagem' => $imagem_urn,
+                'numero_portas' => $request->numero_portas,
+                'lugares' => $request->lugares,
+                'air_bag' => $request->air_bag,
+                'abs' => $request->abs
+            ]);
+
+            return response()->json($modelo, 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao criar modelo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -86,8 +100,11 @@ class ModeloController extends Controller
     {
         $modelo = $this->modelo->with('marca')->find($id);
         if($modelo === null) {
-            return response()->json(['erro' => 'Recurso pesquisado não existe'], 404) ;
-        } 
+            return response()->json([
+                'message' => 'Modelo não encontrado',
+                'error' => 'O modelo solicitado não existe ou foi removido'
+            ], 404);
+        }
 
         return response()->json($modelo, 200);
     }
@@ -112,54 +129,57 @@ class ModeloController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $modelo = $this->modelo->find($id);
+        try {
+            $modelo = $this->modelo->find($id);
 
-        if($modelo === null) {
-            return response()->json(['erro' => 'Impossível realizar a atualização. O recurso solicitado não existe'], 404);
-        }
-
-        if($request->method() === 'PATCH') {
-
-            $regrasDinamicas = array();
-
-            //percorrendo todas as regras definidas no Model
-            foreach($modelo->rules() as $input => $regra) {
-                
-                //coletar apenas as regras aplicáveis aos parâmetros parciais da requisição PATCH
-                if(array_key_exists($input, $request->all())) {
-                    $regrasDinamicas[$input] = $regra;
-                }
+            if($modelo === null) {
+                return response()->json([
+                    'message' => 'Modelo não encontrado',
+                    'error' => 'Não foi possível atualizar. O modelo não existe'
+                ], 404);
             }
-            
-            $request->validate($regrasDinamicas);
 
-        } else {
-            $request->validate($modelo->rules());
-        }
-        
-        //remove o arquivo antigo caso um novo arquivo tenha sido enviado no request
-        if($request->file('imagem')) {
-            Storage::disk('public')->delete($modelo->imagem);
-        }
-        
-        $imagem = $request->file('imagem');
-        $imagem_urn = $imagem->store('imagens/modelos', 'public');
+            if($request->method() === 'PATCH') {
+                $regrasDinamicas = array();
+                $feedbackDinamico = array();
 
-        $modelo->fill($request->all());
-        $modelo->imagem = $imagem_urn;
-        $modelo->save();
-        /*
-        $modelo->update([
-            'marca_id' => $request->marca_id,
-            'nome' => $request->nome,
-            'imagem' => $imagem_urn,
-            'numero_portas' => $request->numero_portas,
-            'lugares' => $request->lugares,
-            'air_bag' => $request->air_bag,
-            'abs' => $request->abs
-        ]);
-        */
-        return response()->json($modelo, 200);
+                foreach($modelo->rules() as $input => $regra) {
+                    if(array_key_exists($input, $request->all())) {
+                        $regrasDinamicas[$input] = $regra;
+                    }
+                }
+
+                foreach($modelo->feedback() as $input => $mensagem) {
+                    if(array_key_exists(explode('.', $input)[0], $request->all())) {
+                        $feedbackDinamico[$input] = $mensagem;
+                    }
+                }
+
+                $request->validate($regrasDinamicas, $feedbackDinamico);
+            } else {
+                $request->validate($modelo->rules(), $modelo->feedback());
+            }
+
+            // Atualiza a imagem apenas se uma nova foi enviada
+            if($request->file('imagem')) {
+                Storage::disk('public')->delete($modelo->imagem);
+                $imagem = $request->file('imagem');
+                $imagem_urn = $imagem->store('imagens/modelos', 'public');
+                $modelo->imagem = $imagem_urn;
+            }
+
+            $modelo->fill($request->all());
+            $modelo->save();
+
+            return response()->json($modelo, 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao atualizar modelo',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -170,17 +190,36 @@ class ModeloController extends Controller
      */
     public function destroy($id)
     {
-        $modelo = $this->modelo->find($id);
+        try {
+            $modelo = $this->modelo->find($id);
 
-        if($modelo === null) {
-            return response()->json(['erro' => 'Impossível realizar a exclusão. O recurso solicitado não existe'], 404);
+            if($modelo === null) {
+                return response()->json([
+                    'message' => 'Modelo não encontrado',
+                    'error' => 'Não foi possível excluir. O modelo não existe'
+                ], 404);
+            }
+
+            // Verifica se existem carros associados a este modelo
+            $carrosCount = $modelo->carros()->count();
+            if($carrosCount > 0) {
+                return response()->json([
+                    'message' => 'Não é possível excluir este modelo',
+                    'error' => "Existem {$carrosCount} carro(s) vinculado(s) a este modelo. Remova ou reatribua os carros antes de excluir o modelo."
+                ], 400);
+            }
+
+            Storage::disk('public')->delete($modelo->imagem);
+            $modelo->delete();
+
+            return response()->json([
+                'message' => 'Modelo excluído com sucesso'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao excluir modelo',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        //remove o arquivo antigo
-        Storage::disk('public')->delete($modelo->imagem);
-
-        $modelo->delete();
-        return response()->json(['msg' => 'O modelo foi removida com sucesso!'], 200);
-        
     }
 }

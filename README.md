@@ -119,7 +119,15 @@ docker-compose exec app php artisan migrate
 docker-compose exec app php artisan db:seed
 ```
 
-### 10. Instale as dependências do frontend
+### 10. Crie o link simbólico para storage (necessário para upload de imagens)
+
+```bash
+docker-compose exec app php artisan storage:link
+```
+
+**Importante:** Este comando cria um link entre `public/storage` e `storage/app/public`, permitindo que as imagens enviadas sejam acessíveis via web.
+
+### 11. Instale as dependências do frontend
 
 ```bash
 npm install
@@ -147,7 +155,13 @@ O projeto agora conta com uma interface completamente redesenhada:
 - **Sidebar:** Navegação intuitiva com ícones
 ```
 
-### 11. Compile os assets do frontend
+### 11. Instale as dependências do frontend
+
+```bash
+npm install
+```
+
+### 12. Compile os assets do frontend
 
 ```bash
 # Desenvolvimento
@@ -160,7 +174,7 @@ npm run watch
 npm run prod
 ```
 
-### 12. Crie um usuário para testar
+### 13. Crie um usuário para testar
 
 ```bash
 docker-compose exec app php artisan tinker

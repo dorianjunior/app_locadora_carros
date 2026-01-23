@@ -73,7 +73,7 @@
                 <div class="text-sm text-gray-600 dark:text-gray-400">{{ modelo.numero_portas }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-600 dark:text-gray-400">{{ modelo.numero_lugares }}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{{ modelo.lugares }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                 <button @click="openModal(modelo)" class="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300">Editar</button>
@@ -82,6 +82,34 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="pagination.last_page > 1" class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-700 dark:text-gray-400">
+            Mostrando <span class="font-medium">{{ pagination.from }}</span> a <span class="font-medium">{{ pagination.to }}</span> de <span class="font-medium">{{ pagination.total }}</span> modelos
+          </div>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="fetchModelos(pagination.current_page - 1)"
+              :disabled="pagination.current_page === 1"
+              class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Anterior
+            </button>
+            <span class="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
+              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            </span>
+            <button
+              @click="fetchModelos(pagination.current_page + 1)"
+              :disabled="pagination.current_page === pagination.last_page"
+              class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -162,13 +190,29 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Imagem (URL)</label>
-          <input
-            v-model="form.imagem"
-            type="text"
-            class="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="URL da imagem"
-          />
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Imagem</label>
+          <div class="space-y-3">
+            <div v-if="imagePreview" class="relative inline-block">
+              <img :src="imagePreview" alt="Preview" class="w-32 h-32 rounded-lg object-cover border-2 border-gray-300 dark:border-gray-600">
+              <button
+                @click="removeImage"
+                type="button"
+                class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <input
+              @change="handleImageUpload"
+              ref="fileInput"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+              class="block w-full text-sm text-gray-900 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:bg-primary-600 file:text-white hover:file:bg-primary-700 file:cursor-pointer"
+            />
+            <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, JPEG, GIF ou WebP até 2MB</p>
+          </div>
         </div>
 
         <div class="flex justify-end space-x-3 pt-4">
@@ -202,9 +246,20 @@ const loading = ref(false)
 const saving = ref(false)
 const modelos = ref([])
 const marcas = ref([])
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  per_page: 10,
+  total: 0,
+  from: 0,
+  to: 0
+})
 const showModal = ref(false)
 const editingModelo = ref(null)
 const searchQuery = ref('')
+const imagePreview = ref(null)
+const fileInput = ref(null)
+const selectedFile = ref(null)
 let searchTimeout = null
 
 const form = ref({
@@ -220,30 +275,39 @@ const form = ref({
 const fetchMarcas = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get('/api/v1/marca', {
+    const response = await axios.get('/api/v1/marca/all', {
       headers: { Authorization: `Bearer ${token}` }
     })
-    marcas.value = response.data
+    marcas.value = response.data || []
   } catch (error) {
-    // Silent error
+    marcas.value = []
   }
 }
 
-const fetchModelos = async () => {
+const fetchModelos = async (page = 1) => {
   loading.value = true
   try {
     const token = localStorage.getItem('token')
     const headers = { Authorization: `Bearer ${token}` }
 
-    let url = '/api/v1/modelo?atributos_marca=id,nome'
+    let url = `/api/v1/modelo?page=${page}&atributos_marca=id,nome`
     if (searchQuery.value) {
       url += `&filtro=nome:like:%${searchQuery.value}%`
     }
 
     const response = await axios.get(url, { headers })
-    modelos.value = response.data
+    modelos.value = response.data.data || []
+    pagination.value = {
+      current_page: response.data.current_page,
+      last_page: response.data.last_page,
+      per_page: response.data.per_page,
+      total: response.data.total,
+      from: response.data.from || 0,
+      to: response.data.to || 0
+    }
   } catch (error) {
     showAlert.error('Erro ao carregar modelos')
+    modelos.value = []
   } finally {
     loading.value = false
   }
@@ -256,6 +320,30 @@ const searchModelos = () => {
   }, 300)
 }
 
+const handleImageUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    if (file.size > 2 * 1024 * 1024) {
+      showAlert.error('A imagem deve ter no máximo 2MB')
+      return
+    }
+    selectedFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      imagePreview.value = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+const removeImage = () => {
+  selectedFile.value = null
+  imagePreview.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
 const openModal = (modelo = null) => {
   editingModelo.value = modelo
   if (modelo) {
@@ -264,9 +352,12 @@ const openModal = (modelo = null) => {
       nome: modelo.nome,
       imagem: modelo.imagem || '',
       numero_portas: modelo.numero_portas,
-      numero_lugares: modelo.numero_lugares,
+      numero_lugares: modelo.lugares,
       air_bag: modelo.air_bag ? 'true' : 'false',
       abs: modelo.abs ? 'true' : 'false'
+    }
+    if (modelo.imagem) {
+      imagePreview.value = `/storage/${modelo.imagem}`
     }
   } else {
     form.value = {
@@ -278,7 +369,9 @@ const openModal = (modelo = null) => {
       air_bag: 'true',
       abs: 'true'
     }
+    imagePreview.value = null
   }
+  selectedFile.value = null
   showModal.value = true
 }
 
@@ -286,22 +379,33 @@ const saveModelo = async () => {
   saving.value = true
   try {
     const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data'
+    }
 
-    const data = {
-      ...form.value,
-      air_bag: form.value.air_bag === 'true',
-      abs: form.value.abs === 'true'
+    const formData = new FormData()
+    formData.append('marca_id', form.value.marca_id)
+    formData.append('nome', form.value.nome)
+    formData.append('numero_portas', form.value.numero_portas)
+    formData.append('lugares', form.value.numero_lugares)
+    formData.append('air_bag', form.value.air_bag === 'true' ? '1' : '0')
+    formData.append('abs', form.value.abs === 'true' ? '1' : '0')
+
+    if (selectedFile.value) {
+      formData.append('imagem', selectedFile.value)
     }
 
     if (editingModelo.value) {
-      await axios.put(`/api/v1/modelo/${editingModelo.value.id}`, data, { headers })
+      formData.append('_method', 'PUT')
+      await axios.post(`/api/v1/modelo/${editingModelo.value.id}`, formData, { headers })
     } else {
-      await axios.post('/api/v1/modelo', data, { headers })
+      await axios.post('/api/v1/modelo', formData, { headers })
     }
 
     showModal.value = false
-    await fetchModelos()
+    removeImage()
+    await fetchModelos(pagination.value.current_page)
     showAlert.toast.success(editingModelo.value ? 'Modelo atualizado com sucesso!' : 'Modelo criado com sucesso!')
   } catch (error) {
     showAlert.error(error.response?.data?.message || 'Erro ao salvar modelo')

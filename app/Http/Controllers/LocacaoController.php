@@ -27,9 +27,9 @@ class LocacaoController extends Controller
 
         if($request->has('atributos')) {
             $locacaoRepository->selectAtributos($request->atributos);
-        } 
+        }
 
-        return response()->json($locacaoRepository->getResultado(), 200);
+        return response()->json($locacaoRepository->getResultadoPaginado(10), 200);
     }
 
     /**
@@ -50,20 +50,27 @@ class LocacaoController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate($this->locacao->rules());
+        try {
+            $request->validate($this->locacao->rules());
 
-        $locacao = $this->locacao->create([
-            'cliente_id' => $request->cliente_id,
-            'carro_id' => $request->carro_id,
-            'data_inicio_periodo' => $request->data_inicio_periodo,
-            'data_final_previsto_periodo' => $request->data_final_previsto_periodo,
-            'data_final_realizado_periodo' => $request->data_final_realizado_periodo,
-            'valor_diaria' => $request->valor_diaria,
-            'km_inicial' => $request->km_inicial,
-            'km_final' => $request->km_final
-        ]);
+            $locacao = $this->locacao->create([
+                'cliente_id' => $request->cliente_id,
+                'carro_id' => $request->carro_id,
+                'data_inicio_periodo' => $request->data_inicio_periodo,
+                'data_final_previsto_periodo' => $request->data_final_previsto_periodo,
+                'data_final_realizado_periodo' => $request->data_final_realizado_periodo,
+                'valor_diaria' => $request->valor_diaria,
+                'km_inicial' => $request->km_inicial,
+                'km_final' => $request->km_final
+            ]);
 
-        return response()->json($locacao, 201);
+            return response()->json($locacao, 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao criar locação',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -76,8 +83,11 @@ class LocacaoController extends Controller
     {
         $locacao = $this->locacao->find($id);
         if($locacao === null) {
-            return response()->json(['erro' => 'Recurso pesquisado não existe'], 404) ;
-        } 
+            return response()->json([
+                'message' => 'Locação não encontrada',
+                'error' => 'A locação solicitada não existe ou foi removida'
+            ], 404);
+        }
 
         return response()->json($locacao, 200);
     }
@@ -102,35 +112,42 @@ class LocacaoController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $locacao = $this->locacao->find($id);
+        try {
+            $locacao = $this->locacao->find($id);
 
-        if($locacao === null) {
-            return response()->json(['erro' => 'Impossível realizar a atualização. O recurso solicitado não existe'], 404);
-        }
-
-        if($request->method() === 'PATCH') {
-
-            $regrasDinamicas = array();
-
-            //percorrendo todas as regras definidas no Model
-            foreach($locacao->rules() as $input => $regra) {
-                
-                //coletar apenas as regras aplicáveis aos parâmetros parciais da requisição PATCH
-                if(array_key_exists($input, $request->all())) {
-                    $regrasDinamicas[$input] = $regra;
-                }
+            if($locacao === null) {
+                return response()->json([
+                    'message' => 'Locação não encontrada',
+                    'error' => 'Não foi possível atualizar. A locação não existe'
+                ], 404);
             }
-            
-            $request->validate($regrasDinamicas);
 
-        } else {
-            $request->validate($locacao->rules());
+            if($request->method() === 'PATCH') {
+                $regrasDinamicas = array();
+
+                foreach($locacao->rules() as $input => $regra) {
+                    if(array_key_exists($input, $request->all())) {
+                        $regrasDinamicas[$input] = $regra;
+                    }
+                }
+
+                $request->validate($regrasDinamicas);
+            } else {
+                $request->validate($locacao->rules());
+            }
+
+            $locacao->fill($request->all());
+            $locacao->save();
+
+            return response()->json($locacao, 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao atualizar locação',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        $locacao->fill($request->all());
-        $locacao->save();
-        
-        return response()->json($locacao, 200);
     }
 
     /**
@@ -141,14 +158,26 @@ class LocacaoController extends Controller
      */
     public function destroy($id)
     {
-        $locacao = $this->locacao->find($id);
+        try {
+            $locacao = $this->locacao->find($id);
 
-        if($locacao === null) {
-            return response()->json(['erro' => 'Impossível realizar a exclusão. O recurso solicitado não existe'], 404);
+            if($locacao === null) {
+                return response()->json([
+                    'message' => 'Locação não encontrada',
+                    'error' => 'Não foi possível excluir. A locação não existe'
+                ], 404);
+            }
+
+            $locacao->delete();
+
+            return response()->json([
+                'message' => 'Locação excluída com sucesso'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao excluir locação',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $locacao->delete();
-        return response()->json(['msg' => 'A locação foi removida com sucesso!'], 200);
-        
     }
 }

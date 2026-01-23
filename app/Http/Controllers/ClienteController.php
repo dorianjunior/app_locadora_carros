@@ -27,9 +27,9 @@ class ClienteController extends Controller
 
         if($request->has('atributos')) {
             $clienteRepository->selectAtributos($request->atributos);
-        } 
+        }
 
-        return response()->json($clienteRepository->getResultado(), 200);
+        return response()->json($clienteRepository->getResultadoPaginado(10), 200);
     }
 
     /**
@@ -40,13 +40,26 @@ class ClienteController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate($this->cliente->rules());
+        try {
+            $request->validate($this->cliente->rules());
 
-        $cliente = $this->cliente->create([
-            'nome' => $request->nome
-        ]);
+            $cliente = $this->cliente->create([
+                'nome' => $request->nome,
+                'email' => $request->email,
+                'cpf' => $request->cpf,
+                'telefone' => $request->telefone,
+                'endereco' => $request->endereco
+            ]);
 
-        return response()->json($cliente, 201);
+            return response()->json($cliente, 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao criar cliente',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -59,8 +72,11 @@ class ClienteController extends Controller
     {
         $cliente = $this->cliente->find($id);
         if($cliente === null) {
-            return response()->json(['erro' => 'Recurso pesquisado não existe'], 404) ;
-        } 
+            return response()->json([
+                'message' => 'Cliente não encontrado',
+                'error' => 'O cliente solicitado não existe ou foi removido'
+            ], 404);
+        }
 
         return response()->json($cliente, 200);
     }
@@ -74,35 +90,42 @@ class ClienteController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $cliente = $this->cliente->find($id);
+        try {
+            $cliente = $this->cliente->find($id);
 
-        if($cliente === null) {
-            return response()->json(['erro' => 'Impossível realizar a atualização. O recurso solicitado não existe'], 404);
-        }
-
-        if($request->method() === 'PATCH') {
-
-            $regrasDinamicas = array();
-
-            //percorrendo todas as regras definidas no Model
-            foreach($cliente->rules() as $input => $regra) {
-                
-                //coletar apenas as regras aplicáveis aos parâmetros parciais da requisição PATCH
-                if(array_key_exists($input, $request->all())) {
-                    $regrasDinamicas[$input] = $regra;
-                }
+            if($cliente === null) {
+                return response()->json([
+                    'message' => 'Cliente não encontrado',
+                    'error' => 'Não foi possível atualizar. O cliente não existe'
+                ], 404);
             }
-            
-            $request->validate($regrasDinamicas);
 
-        } else {
-            $request->validate($cliente->rules());
+            if($request->method() === 'PATCH') {
+                $regrasDinamicas = array();
+
+                foreach($cliente->rules() as $input => $regra) {
+                    if(array_key_exists($input, $request->all())) {
+                        $regrasDinamicas[$input] = $regra;
+                    }
+                }
+
+                $request->validate($regrasDinamicas);
+            } else {
+                $request->validate($cliente->rules());
+            }
+
+            $cliente->fill($request->all());
+            $cliente->save();
+
+            return response()->json($cliente, 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao atualizar cliente',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        $cliente->fill($request->all());
-        $cliente->save();
-        
-        return response()->json($cliente, 200);
     }
 
     /**
@@ -113,14 +136,34 @@ class ClienteController extends Controller
      */
     public function destroy($id)
     {
-        $cliente = $this->cliente->find($id);
+        try {
+            $cliente = $this->cliente->find($id);
 
-        if($cliente === null) {
-            return response()->json(['erro' => 'Impossível realizar a exclusão. O recurso solicitado não existe'], 404);
+            if($cliente === null) {
+                return response()->json([
+                    'message' => 'Cliente não encontrado',
+                    'error' => 'Não foi possível excluir. O cliente não existe'
+                ], 404);
+            }
+
+            $locacoesCount = $cliente->locacoes()->count();
+            if($locacoesCount > 0) {
+                return response()->json([
+                    'message' => 'Não é possível excluir este cliente',
+                    'error' => "Existem {$locacoesCount} locação(ões) vinculada(s) a este cliente. Remova as locações antes de excluir o cliente."
+                ], 400);
+            }
+
+            $cliente->delete();
+
+            return response()->json([
+                'message' => 'Cliente excluído com sucesso'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Erro ao excluir cliente',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $cliente->delete();
-        return response()->json(['msg' => 'O cliente foi removido com sucesso!'], 200);
-        
     }
 }
