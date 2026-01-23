@@ -1,4 +1,5 @@
 const mix = require('laravel-mix');
+const path = require('path');
 
 /*
  |--------------------------------------------------------------------------
@@ -12,6 +13,22 @@ const mix = require('laravel-mix');
  */
 
 mix.js('resources/js/app.js', 'public/js')
-    .js('node_modules/popper.js/dist/popper', 'public/js').sourceMaps()
-    .vue()
-    .sass('resources/sass/app.scss', 'public/css');
+    .vue({ version: 3 })
+    .postCss('resources/css/app.css', 'public/css', [
+        require('tailwindcss'),
+    ])
+    .webpackConfig({
+        resolve: {
+            alias: {
+                '@': path.resolve(__dirname, 'resources/js')
+            }
+        },
+        plugins: [
+            new (require('webpack')).DefinePlugin({
+                __VUE_OPTIONS_API__: JSON.stringify(true),
+                __VUE_PROD_DEVTOOLS__: JSON.stringify(false),
+                __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: JSON.stringify(false)
+            })
+        ]
+    })
+    .sourceMaps();

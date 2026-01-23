@@ -1,5 +1,3 @@
-version: "3.7"
-
 services:
     # image project
     app:
@@ -7,27 +5,30 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+            args:
+                user: laravel
+                uid: 1000
         image: especializati/laravel-app
         restart: unless-stopped
         working_dir: /var/www/
         volumes:
             - ./:/var/www
-        depends_on: 
+        depends_on:
             - redis
-        networks: 
+        networks:
             - laravel
-    
+
     # nginx
     nginx:
         container_name: especializati-nginx
         image: nginx:alpine
         restart: unless-stopped
-        ports: 
+        ports:
             - "8989:80"
-        volumes: 
+        volumes:
             - ./:/var/www
             - ./docker/nginx/:/etc/nginx/conf.d/
-        networks: 
+        networks:
             - laravel
 
     # db mysql
@@ -35,16 +36,16 @@ services:
         container_name: especializati-mysql
         image: mysql:5.7.22
         restart: unless-stopped
-        environment: 
+        environment:
             MYSQL_DATABASE: ${DB_DATABASE}
             MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
             MYSQL_PASSWORD: ${DB_PASSWORD}
             MYSQL_USER: ${DB_USERNAME}
-        volumes: 
+        volumes:
             - ./.docker/mysql/dbdata:/var/lib/mysql
-        ports: 
+        ports:
             - "3388:3306"
-        networks: 
+        networks:
             - laravel
 
     # queue
@@ -53,21 +54,21 @@ services:
         image: especializati/laravel-app
         restart: unless-stopped
         command: "php artisan queue:work"
-        volumes: 
+        volumes:
             - ./:/var/www
-        depends_on: 
+        depends_on:
             - redis
             - app
-        networks: 
+        networks:
             - laravel
 
     # redis
     redis:
         container_name: especializati-redis
         image: redis:latest
-        networks: 
+        networks:
             - laravel
 
-networks: 
+networks:
     laravel:
         driver: bridge

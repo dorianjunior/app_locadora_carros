@@ -92,7 +92,7 @@
                 </div>
             </div>
         </nav>
-        
+
         @auth
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
