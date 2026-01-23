@@ -196,6 +196,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import Modal from '@/components/Modal.vue'
+import { showAlert } from '@/utils/alert'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -242,7 +243,7 @@ const fetchModelos = async () => {
     const response = await axios.get(url, { headers })
     modelos.value = response.data
   } catch (error) {
-    alert('Erro ao carregar modelos')
+    showAlert.error('Erro ao carregar modelos')
   } finally {
     loading.value = false
   }
@@ -301,15 +302,17 @@ const saveModelo = async () => {
 
     showModal.value = false
     await fetchModelos()
+    showAlert.toast.success(editingModelo.value ? 'Modelo atualizado com sucesso!' : 'Modelo criado com sucesso!')
   } catch (error) {
-    alert(error.response?.data?.message || 'Erro ao salvar modelo')
+    showAlert.error(error.response?.data?.message || 'Erro ao salvar modelo')
   } finally {
     saving.value = false
   }
 }
 
 const deleteModelo = async (id) => {
-  if (!confirm('Deseja realmente excluir este modelo?')) return
+  const result = await showAlert.confirm('Esta ação não poderá ser desfeita!', 'Deseja excluir este modelo?')
+  if (!result.isConfirmed) return
 
   try {
     const token = localStorage.getItem('token')
@@ -317,8 +320,9 @@ const deleteModelo = async (id) => {
 
     await axios.delete(`/api/v1/modelo/${id}`, { headers })
     await fetchModelos()
+    showAlert.toast.success('Modelo excluído com sucesso!')
   } catch (error) {
-    alert(error.response?.data?.message || 'Erro ao excluir modelo')
+    showAlert.error(error.response?.data?.message || 'Erro ao excluir modelo')
   }
 }
 

@@ -132,6 +132,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import Modal from '@/components/Modal.vue'
+import { showAlert } from '@/utils/alert'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -160,7 +161,7 @@ const fetchMarcas = async () => {
     const response = await axios.get(url, { headers })
     marcas.value = response.data
   } catch (error) {
-    alert('Erro ao carregar marcas')
+    showAlert.error('Erro ao carregar marcas')
   } finally {
     loading.value = false
   }
@@ -203,15 +204,17 @@ const saveMarca = async () => {
 
     showModal.value = false
     await fetchMarcas()
+    showAlert.toast.success(editingMarca.value ? 'Marca atualizada com sucesso!' : 'Marca criada com sucesso!')
   } catch (error) {
-    alert(error.response?.data?.message || 'Erro ao salvar marca')
+    showAlert.error(error.response?.data?.message || 'Erro ao salvar marca')
   } finally {
     saving.value = false
   }
 }
 
 const deleteMarca = async (id) => {
-  if (!confirm('Deseja realmente excluir esta marca?')) return
+  const result = await showAlert.confirm('Esta ação não poderá ser desfeita!', 'Deseja excluir esta marca?')
+  if (!result.isConfirmed) return
 
   try {
     const token = localStorage.getItem('token')
@@ -219,8 +222,9 @@ const deleteMarca = async (id) => {
 
     await axios.delete(`/api/v1/marca/${id}`, { headers })
     await fetchMarcas()
+    showAlert.toast.success('Marca excluída com sucesso!')
   } catch (error) {
-    alert(error.response?.data?.message || 'Erro ao excluir marca')
+    showAlert.error(error.response?.data?.message || 'Erro ao excluir marca')
   }
 }
 
