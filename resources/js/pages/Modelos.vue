@@ -238,7 +238,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import Modal from '@/components/Modal.vue'
 import { showAlert } from '@/utils/alert'
 
@@ -274,11 +274,9 @@ const form = ref({
 
 const fetchMarcas = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('/api/v1/marca/all', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    marcas.value = response.data || []
+    const response = await api.get('/marca/all')
+    // Novo formato: {success, message, data: [...]}
+    marcas.value = response.data.data || []
   } catch (error) {
     marcas.value = []
   }
@@ -287,26 +285,26 @@ const fetchMarcas = async () => {
 const fetchModelos = async (page = 1) => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    let url = `/api/v1/modelo?page=${page}&atributos_marca=id,nome`
+    let url = `/modelo?page=${page}&atributos_marca=id,nome`
     if (searchQuery.value) {
       url += `&filtro=nome:like:%${searchQuery.value}%`
     }
 
-    const response = await axios.get(url, { headers })
-    modelos.value = response.data.data || []
+    const response = await api.get(url)
+    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
+    const paginatedData = response.data.data
+
+    modelos.value = paginatedData.data || []
     pagination.value = {
-      current_page: response.data.current_page,
-      last_page: response.data.last_page,
-      per_page: response.data.per_page,
-      total: response.data.total,
-      from: response.data.from || 0,
-      to: response.data.to || 0
+      current_page: paginatedData.current_page,
+      last_page: paginatedData.last_page,
+      per_page: paginatedData.per_page,
+      total: paginatedData.total,
+      from: paginatedData.from || 0,
+      to: paginatedData.to || 0
     }
   } catch (error) {
-    showAlert.error('Erro ao carregar modelos')
+    showAlert.error(error.response?.data?.message || 'Erro ao carregar modelos')
     modelos.value = []
   } finally {
     loading.value = false
@@ -378,12 +376,6 @@ const openModal = (modelo = null) => {
 const saveModelo = async () => {
   saving.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'multipart/form-data'
-    }
-
     const formData = new FormData()
     formData.append('marca_id', form.value.marca_id)
     formData.append('nome', form.value.nome)
@@ -396,11 +388,15 @@ const saveModelo = async () => {
       formData.append('imagem', selectedFile.value)
     }
 
+    const config = {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }
+
     if (editingModelo.value) {
       formData.append('_method', 'PUT')
-      await axios.post(`/api/v1/modelo/${editingModelo.value.id}`, formData, { headers })
+      await api.post(`/modelo/${editingModelo.value.id}`, formData, config)
     } else {
-      await axios.post('/api/v1/modelo', formData, { headers })
+      await api.post('/modelo', formData, config)
     }
 
     showModal.value = false
@@ -419,10 +415,7 @@ const deleteModelo = async (id) => {
   if (!result.isConfirmed) return
 
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    await axios.delete(`/api/v1/modelo/${id}`, { headers })
+    await api.delete(`/modelo/${id}`)
     await fetchModelos()
     showAlert.toast.success('Modelo excluído com sucesso!')
   } catch (error) {

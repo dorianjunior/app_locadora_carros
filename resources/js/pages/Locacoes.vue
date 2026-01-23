@@ -239,7 +239,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import Modal from '@/components/Modal.vue'
 import { showAlert } from '@/utils/alert'
 
@@ -283,11 +283,10 @@ const formatMoney = (value) => {
 
 const fetchClientes = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('/api/v1/cliente?atributos=id,nome', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    clientes.value = response.data.data || []
+    const response = await api.get('/cliente?atributos=id,nome')
+    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
+    const paginatedData = response.data.data
+    clientes.value = paginatedData.data || []
   } catch (error) {
     clientes.value = []
   }
@@ -295,11 +294,10 @@ const fetchClientes = async () => {
 
 const fetchCarros = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('/api/v1/carro?atributos=id,placa,modelo_id&atributos_modelo=id,nome', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    carros.value = response.data.data || []
+    const response = await api.get('/carro?atributos=id,placa,modelo_id&atributos_modelo=id,nome')
+    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
+    const paginatedData = response.data.data
+    carros.value = paginatedData.data || []
   } catch (error) {
     carros.value = []
   }
@@ -308,23 +306,23 @@ const fetchCarros = async () => {
 const fetchLocacoes = async (page = 1) => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
+    let url = `/locacao?page=${page}&atributos_cliente=id,nome&atributos_carro=id,placa,modelo_id&atributos_modelo=id,nome`
 
-    let url = `/api/v1/locacao?page=${page}&atributos_cliente=id,nome&atributos_carro=id,placa,modelo_id&atributos_modelo=id,nome`
+    const response = await api.get(url)
+    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
+    const paginatedData = response.data.data
 
-    const response = await axios.get(url, { headers })
-    locacoes.value = response.data.data || []
+    locacoes.value = paginatedData.data || []
     pagination.value = {
-      current_page: response.data.current_page,
-      last_page: response.data.last_page,
-      per_page: response.data.per_page,
-      total: response.data.total,
-      from: response.data.from || 0,
-      to: response.data.to || 0
+      current_page: paginatedData.current_page,
+      last_page: paginatedData.last_page,
+      per_page: paginatedData.per_page,
+      total: paginatedData.total,
+      from: paginatedData.from || 0,
+      to: paginatedData.to || 0
     }
   } catch (error) {
-    showAlert.error('Erro ao carregar locações')
+    showAlert.error(error.response?.data?.message || 'Erro ao carregar locações')
     locacoes.value = []
   } finally {
     loading.value = false
@@ -369,9 +367,6 @@ const openModal = (locacao = null) => {
 const saveLocacao = async () => {
   saving.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
     const data = {
       cliente_id: form.value.cliente_id,
       carro_id: form.value.carro_id,
@@ -390,9 +385,9 @@ const saveLocacao = async () => {
     }
 
     if (editingLocacao.value) {
-      await axios.put(`/api/v1/locacao/${editingLocacao.value.id}`, data, { headers })
+      await api.put(`/locacao/${editingLocacao.value.id}`, data)
     } else {
-      await axios.post('/api/v1/locacao', data, { headers })
+      await api.post('/locacao', data)
     }
 
     showModal.value = false
@@ -410,10 +405,7 @@ const deleteLocacao = async (id) => {
   if (!result.isConfirmed) return
 
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    await axios.delete(`/api/v1/locacao/${id}`, { headers })
+    await api.delete(`/locacao/${id}`)
     await fetchLocacoes()
     showAlert.toast.success('Locação excluída com sucesso!')
   } catch (error) {

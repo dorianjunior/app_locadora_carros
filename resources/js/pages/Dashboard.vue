@@ -118,7 +118,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 
 const loading = ref(true)
 const stats = ref({
@@ -133,27 +133,55 @@ const stats = ref({
 const fetchStats = async () => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
     const [marcas, modelos, carros, clientes, locacoes] = await Promise.all([
-      axios.get('/api/v1/marca', { headers }),
-      axios.get('/api/v1/modelo', { headers }),
-      axios.get('/api/v1/carro', { headers }),
-      axios.get('/api/v1/cliente', { headers }),
-      axios.get('/api/v1/locacao', { headers })
+      api.get('/marca'),
+      api.get('/modelo'),
+      api.get('/carro'),
+      api.get('/cliente'),
+      api.get('/locacao')
     ])
 
+    const getMarcasData = () => {
+      const marcasData = marcas.data.data || marcas.data
+      return marcasData.data || marcasData || []
+    }
+
+    const getModelosData = () => {
+      const modelosData = modelos.data.data || modelos.data
+      return modelosData.data || modelosData || []
+    }
+
+    const getCarrosData = () => {
+      const carrosData = carros.data.data || carros.data
+      return carrosData.data || carrosData || []
+    }
+
+    const getClientesData = () => {
+      const clientesData = clientes.data.data || clientes.data
+      return clientesData.data || clientesData || []
+    }
+
+    const getLocacoesData = () => {
+      const locacoesData = locacoes.data.data || locacoes.data
+      return locacoesData.data || locacoesData || []
+    }
+
+    const marcasArray = getMarcasData()
+    const modelosArray = getModelosData()
+    const carrosArray = getCarrosData()
+    const clientesArray = getClientesData()
+    const locacoesArray = getLocacoesData()
+
     stats.value = {
-      totalMarcas: marcas.data.length || 0,
-      totalModelos: modelos.data.length || 0,
-      totalCarros: carros.data.length || 0,
-      totalClientes: clientes.data.length || 0,
-      locacoesAtivas: locacoes.data.filter(l => !l.data_final_realizado_periodo).length || 0,
-      locacoesFinalizadas: locacoes.data.filter(l => l.data_final_realizado_periodo).length || 0
+      totalMarcas: marcasArray.length || 0,
+      totalModelos: modelosArray.length || 0,
+      totalCarros: carrosArray.length || 0,
+      totalClientes: clientesArray.length || 0,
+      locacoesAtivas: locacoesArray.filter(l => !l.data_final_realizado_periodo).length || 0,
+      locacoesFinalizadas: locacoesArray.filter(l => l.data_final_realizado_periodo).length || 0
     }
   } catch (error) {
-    // Silent error
+    // Ignora erros
   } finally {
     loading.value = false
   }

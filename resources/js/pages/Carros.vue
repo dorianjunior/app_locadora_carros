@@ -193,7 +193,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import Modal from '@/components/Modal.vue'
 import { showAlert } from '@/utils/alert'
 
@@ -227,11 +227,10 @@ const formatNumber = (num) => {
 
 const fetchModelos = async () => {
   try {
-    const token = localStorage.getItem('token')
-    const response = await axios.get('/api/v1/modelo?atributos=id,nome,marca_id&atributos_marca=id,nome', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    modelos.value = response.data.data || []
+    const response = await api.get('/modelo?atributos=id,nome,marca_id&atributos_marca=id,nome')
+    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
+    const paginatedData = response.data.data
+    modelos.value = paginatedData.data || []
   } catch (error) {
     modelos.value = []
   }
@@ -240,26 +239,26 @@ const fetchModelos = async () => {
 const fetchCarros = async (page = 1) => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    let url = `/api/v1/carro?page=${page}&atributos_modelo=id,nome,marca_id&atributos_marca=id,nome`
+    let url = `/carro?page=${page}&atributos_modelo=id,nome,marca_id&atributos_marca=id,nome`
     if (searchQuery.value) {
       url += `&filtro=placa:like:%${searchQuery.value}%`
     }
 
-    const response = await axios.get(url, { headers })
-    carros.value = response.data.data || []
+    const response = await api.get(url)
+    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
+    const paginatedData = response.data.data
+
+    carros.value = paginatedData.data || []
     pagination.value = {
-      current_page: response.data.current_page,
-      last_page: response.data.last_page,
-      per_page: response.data.per_page,
-      total: response.data.total,
-      from: response.data.from || 0,
-      to: response.data.to || 0
+      current_page: paginatedData.current_page,
+      last_page: paginatedData.last_page,
+      per_page: paginatedData.per_page,
+      total: paginatedData.total,
+      from: paginatedData.from || 0,
+      to: paginatedData.to || 0
     }
   } catch (error) {
-    showAlert.error('Erro ao carregar carros')
+    showAlert.error(error.response?.data?.message || 'Erro ao carregar carros')
     carros.value = []
   } finally {
     loading.value = false
@@ -296,9 +295,6 @@ const openModal = (carro = null) => {
 const saveCarro = async () => {
   saving.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
     const data = {
       modelo_id: form.value.modelo_id,
       placa: form.value.placa,
@@ -307,9 +303,9 @@ const saveCarro = async () => {
     }
 
     if (editingCarro.value) {
-      await axios.put(`/api/v1/carro/${editingCarro.value.id}`, data, { headers })
+      await api.put(`/carro/${editingCarro.value.id}`, data)
     } else {
-      await axios.post('/api/v1/carro', data, { headers })
+      await api.post('/carro', data)
     }
 
     showModal.value = false
@@ -327,10 +323,7 @@ const deleteCarro = async (id) => {
   if (!result.isConfirmed) return
 
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    await axios.delete(`/api/v1/carro/${id}`, { headers })
+    await api.delete(`/carro/${id}`)
     await fetchCarros()
     showAlert.toast.success('Carro excluído com sucesso!')
   } catch (error) {

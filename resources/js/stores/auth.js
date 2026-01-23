@@ -21,12 +21,17 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const response = await axios.post('/api/login', credentials)
-        this.token = response.data.token
-        localStorage.setItem('token', this.token)
-        await this.fetchUser()
-        return true
+
+        if (response.data.success) {
+          this.token = response.data.data.access_token
+          this.user = response.data.data.user
+          localStorage.setItem('token', this.token)
+          return true
+        } else {
+          throw new Error(response.data.message || 'Erro ao fazer login')
+        }
       } catch (error) {
-        this.error = error.response?.data?.message || 'Erro ao fazer login'
+        this.error = error.response?.data?.message || error.message || 'Erro ao fazer login'
         throw error
       } finally {
         this.loading = false
@@ -38,7 +43,12 @@ export const useAuthStore = defineStore('auth', {
         const response = await axios.get('/api/v1/me', {
           headers: { Authorization: `Bearer ${this.token}` }
         })
-        this.user = response.data
+
+        if (response.data.success) {
+          this.user = response.data.data
+        } else {
+          this.logout()
+        }
       } catch (error) {
         this.logout()
       }
@@ -50,7 +60,7 @@ export const useAuthStore = defineStore('auth', {
           headers: { Authorization: `Bearer ${this.token}` }
         })
       } catch (error) {
-        // Silent error
+        // Ignora erros no logout
       } finally {
         this.user = null
         this.token = null
@@ -63,7 +73,7 @@ export const useAuthStore = defineStore('auth', {
         try {
           await this.fetchUser()
         } catch (error) {
-          // Silent error
+          // Ignora erros na verificação
         }
       }
     }

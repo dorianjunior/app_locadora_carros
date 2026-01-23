@@ -10,7 +10,6 @@ const api = axios.create({
   }
 })
 
-// Request interceptor
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -24,9 +23,11 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor
 api.interceptors.response.use(
   (response) => {
+    if (response.data && response.data.success === false) {
+      return Promise.reject(response.data)
+    }
     return response
   },
   (error) => {

@@ -191,7 +191,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/services/api'
 import Modal from '@/components/Modal.vue'
 import { showAlert } from '@/utils/alert'
 
@@ -240,26 +240,26 @@ const maskCPF = (event) => {
 const fetchClientes = async (page = 1) => {
   loading.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    let url = `/api/v1/cliente?page=${page}`
+    let url = `/cliente?page=${page}`
     if (searchQuery.value) {
       url += `&filtro=nome:like:%${searchQuery.value}%`
     }
 
-    const response = await axios.get(url, { headers })
-    clientes.value = response.data.data || []
+    const response = await api.get(url)
+    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
+    const paginatedData = response.data.data
+
+    clientes.value = paginatedData.data || []
     pagination.value = {
-      current_page: response.data.current_page,
-      last_page: response.data.last_page,
-      per_page: response.data.per_page,
-      total: response.data.total,
-      from: response.data.from || 0,
-      to: response.data.to || 0
+      current_page: paginatedData.current_page,
+      last_page: paginatedData.last_page,
+      per_page: paginatedData.per_page,
+      total: paginatedData.total,
+      from: paginatedData.from || 0,
+      to: paginatedData.to || 0
     }
   } catch (error) {
-    showAlert.error('Erro ao carregar clientes')
+    showAlert.error(error.response?.data?.message || 'Erro ao carregar clientes')
     clientes.value = []
   } finally {
     loading.value = false
@@ -298,9 +298,6 @@ const openModal = (cliente = null) => {
 const saveCliente = async () => {
   saving.value = true
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
     const data = {
       nome: form.value.nome,
       email: form.value.email,
@@ -310,9 +307,9 @@ const saveCliente = async () => {
     }
 
     if (editingCliente.value) {
-      await axios.put(`/api/v1/cliente/${editingCliente.value.id}`, data, { headers })
+      await api.put(`/cliente/${editingCliente.value.id}`, data)
     } else {
-      await axios.post('/api/v1/cliente', data, { headers })
+      await api.post('/cliente', data)
     }
 
     showModal.value = false
@@ -330,10 +327,7 @@ const deleteCliente = async (id) => {
   if (!result.isConfirmed) return
 
   try {
-    const token = localStorage.getItem('token')
-    const headers = { Authorization: `Bearer ${token}` }
-
-    await axios.delete(`/api/v1/cliente/${id}`, { headers })
+    await api.delete(`/cliente/${id}`)
     await fetchClientes()
     showAlert.toast.success('Cliente excluído com sucesso!')
   } catch (error) {
