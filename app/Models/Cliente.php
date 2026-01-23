@@ -9,19 +9,55 @@ class Cliente extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nome', 'email', 'cpf', 'telefone', 'endereco'];
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<string>
+     */
+    protected $fillable = [
+        'nome',
+        'email',
+        'cpf',
+        'telefone',
+        'endereco'
+    ];
 
-    public function rules() {
-        return [
-            'nome' => 'required|min:3|max:100',
-            'email' => 'required|email|unique:clientes,email,' . ($this->id ?? 'NULL'),
-            'cpf' => 'required|size:11|unique:clientes,cpf,' . ($this->id ?? 'NULL'),
-            'telefone' => 'required|max:20',
-            'endereco' => 'nullable|max:500'
-        ];
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<string>
+     */
+    protected $hidden = [];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
+     * Relacionamento: Um cliente possui muitas locações
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function locacoes()
+    {
+        return $this->hasMany(Locacao::class);
     }
 
-    public function locacoes() {
-        return $this->hasMany('App\Models\Locacao');
+    /**
+     * Accessor: CPF formatado
+     *
+     * @return string|null
+     */
+    public function getCpfFormatadoAttribute()
+    {
+        if (!$this->cpf) return null;
+
+        return preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $this->cpf);
     }
 }

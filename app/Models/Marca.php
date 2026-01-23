@@ -8,33 +8,51 @@ use Illuminate\Database\Eloquent\Model;
 class Marca extends Model
 {
     use HasFactory;
-    protected $fillable = ['nome', 'imagem'];
 
-    public function rules() {
-        return [
-            'nome' => 'required|unique:marcas,nome,'.$this->id.'|min:3',
-            'imagem' => 'required|file|mimes:png,jpg,jpeg,gif,webp|max:2048'
-        ];
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<string>
+     */
+    protected $fillable = [
+        'nome',
+        'imagem'
+    ];
 
-        /*
-            1) tabela
-            2) nome da coluna que será pesquisada na tabela3
-            3) id do registro que será desconsiderado na pesquisa
-        */
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<string>
+     */
+    protected $hidden = [];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
+     * Relacionamento: Uma marca possui muitos modelos
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function modelos()
+    {
+        return $this->hasMany(Modelo::class);
     }
 
-    public function feedback() {
-        return [
-            'required' => 'O campo :attribute é obrigatório',
-            'imagem.mimes' => 'A imagem deve ser PNG, JPG, JPEG, GIF ou WebP',
-            'imagem.max' => 'A imagem deve ter no máximo 2MB',
-            'nome.unique' => 'O nome da marca já existe',
-            'nome.min' => 'O nome deve ter no mínimo 3 caracteres'
-        ];
-    }
-
-    public function modelos() {
-        //UMA marca POSSUI MUITOS modelos
-        return $this->hasMany('App\Models\Modelo');
+    /**
+     * Accessor: URL completa da imagem
+     *
+     * @return string|null
+     */
+    public function getImagemUrlAttribute()
+    {
+        return $this->imagem ? asset('storage/' . $this->imagem) : null;
     }
 }

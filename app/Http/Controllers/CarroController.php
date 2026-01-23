@@ -3,192 +3,152 @@
 namespace App\Http\Controllers;
 
 use App\Models\Carro;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreCarroRequest;
+use App\Http\Requests\UpdateCarroRequest;
 use App\Repositories\CarroRepository;
+use App\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CarroController extends Controller
 {
-    public function __construct(Carro $carro) {
+    use ApiResponse;
+
+    protected $carro;
+
+    public function __construct(Carro $carro)
+    {
         $this->carro = $carro;
     }
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $carroRepository = new CarroRepository($this->carro);
 
-        if($request->has('atributos_modelo')) {
-            $atributos_modelo = 'modelo:id,'.$request->atributos_modelo;
+        if ($request->has('atributos_modelo')) {
+            $atributos_modelo = 'modelo:id,' . $request->atributos_modelo;
             $carroRepository->selectAtributosRegistrosRelacionados($atributos_modelo);
         } else {
             $carroRepository->selectAtributosRegistrosRelacionados('modelo');
         }
 
-        if($request->has('filtro')) {
+        if ($request->has('filtro')) {
             $carroRepository->filtro($request->filtro);
         }
 
-        if($request->has('atributos')) {
+        if ($request->has('atributos')) {
             $carroRepository->selectAtributos($request->atributos);
         }
 
-        return response()->json($carroRepository->getResultadoPaginado(10), 200);
-    }
+        $resultado = $carroRepository->getResultadoPaginado(10);
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
+        return $this->successResponse($resultado, 'Carros listados com sucesso');
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  \App\Http\Requests\StoreCarroRequest  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function store(StoreCarroRequest $request): JsonResponse
     {
         try {
-            $request->validate($this->carro->rules());
+            $carro = $this->carro->create($request->validated());
+            $carro->load('modelo.marca');
 
-            $carro = $this->carro->create([
-                'modelo_id' => $request->modelo_id,
-                'placa' => $request->placa,
-                'disponivel' => $request->disponivel,
-                'km' => $request->km
-            ]);
-
-            return response()->json($carro, 201);
+            return $this->createdResponse($carro, 'Carro criado com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao criar carro',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao criar carro: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Carro  $carro
-     * @return \Illuminate\Http\Response
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id)
+    public function show($id): JsonResponse
     {
-        $carro = $this->carro->with('modelo')->find($id);
-        if($carro === null) {
-            return response()->json([
-                'message' => 'Carro não encontrado',
-                'error' => 'O carro solicitado não existe ou foi removido'
-            ], 404);
+        $carro = $this->carro->with('modelo.marca')->find($id);
+
+        if (!$carro) {
+            return $this->notFoundResponse('Carro não encontrado');
         }
 
-        return response()->json($carro, 200);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Carro  $carro
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Carro $carro)
-    {
-        //
+        return $this->successResponse($carro, 'Carro encontrado com sucesso');
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Carro  $carro
-     * @return \Illuminate\Http\Response
+     * @param  \App\Http\Requests\UpdateCarroRequest  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, $id)
+    public function update(UpdateCarroRequest $request, $id): JsonResponse
     {
         try {
             $carro = $this->carro->find($id);
 
-            if($carro === null) {
-                return response()->json([
-                    'message' => 'Carro não encontrado',
-                    'error' => 'Não foi possível atualizar. O carro não existe'
-                ], 404);
+            if (!$carro) {
+                return $this->notFoundResponse('Carro não encontrado');
             }
 
-            if($request->method() === 'PATCH') {
-                $regrasDinamicas = array();
-
-                foreach($carro->rules() as $input => $regra) {
-                    if(array_key_exists($input, $request->all())) {
-                        $regrasDinamicas[$input] = $regra;
-                    }
-                }
-
-                $request->validate($regrasDinamicas);
-            } else {
-                $request->validate($carro->rules());
-            }
-
-            $carro->fill($request->all());
+            $carro->fill($request->validated());
             $carro->save();
+            $carro->load('modelo.marca');
 
-            return response()->json($carro, 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            throw $e;
+            return $this->successResponse($carro, 'Carro atualizado com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao atualizar carro',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao atualizar carro: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Carro  $carro
-     * @return \Illuminate\Http\Response
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         try {
             $carro = $this->carro->find($id);
 
-            if($carro === null) {
-                return response()->json([
-                    'message' => 'Carro não encontrado',
-                    'error' => 'Não foi possível excluir. O carro não existe'
-                ], 404);
+            if (!$carro) {
+                return $this->notFoundResponse('Carro não encontrado');
             }
 
             $locacoesCount = $carro->locacoes()->count();
-            if($locacoesCount > 0) {
-                return response()->json([
-                    'message' => 'Não é possível excluir este carro',
-                    'error' => "Existem {$locacoesCount} locação(ões) vinculada(s) a este carro. Remova as locações antes de excluir o carro."
-                ], 400);
+            if ($locacoesCount > 0) {
+                return $this->errorResponse(
+                    "Não é possível excluir este carro. Existem {$locacoesCount} locação(ões) vinculada(s).",
+                    400
+                );
             }
 
             $carro->delete();
 
-            return response()->json([
-                'message' => 'Carro excluído com sucesso'
-            ], 200);
+            return $this->successResponse(null, 'Carro excluído com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao excluir carro',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao excluir carro: ' . $e->getMessage(),
+                500
+            );
         }
     }
 }

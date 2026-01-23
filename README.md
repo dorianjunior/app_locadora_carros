@@ -5,7 +5,18 @@ Sistema completo de gerenciamento para locadora de veículos desenvolvido com La
 
 ## 📋 Sobre o Projeto
 
-API RESTful para gerenciamento de locadora de carros com autenticação JWT, permitindo controle completo de marcas, modelos, veículos, clientes e locações.
+API RESTful profissional para gerenciamento de locadora de carros com autenticação JWT, seguindo as melhores práticas do mercado. Código limpo, bem documentado e pronto para produção.
+
+### ✨ Destaques da Refatoração
+
+- ✅ **Respostas Padronizadas** - Trait ApiResponse para consistência total
+- ✅ **Form Requests** - Validações separadas e reutilizáveis
+- ✅ **Models Aprimorados** - Casts, accessors, scopes e relacionamentos tipados
+- ✅ **Controllers Refatorados** - Type hints, mensagens claras e código limpo
+- ✅ **Autenticação JWT Melhorada** - Respostas completas com dados do usuário
+- ✅ **Banco Otimizado** - Índices estratégicos para performance
+- ✅ **Validações Robustas** - Regras específicas e mensagens personalizadas
+- ✅ **Seeders Profissionais** - Dados realistas para teste
 
 ## 🚀 Tecnologias
 
@@ -14,30 +25,45 @@ API RESTful para gerenciamento de locadora de carros com autenticação JWT, per
 - **PHP 8.1** - Linguagem de programação
 - **MySQL 5.7** - Banco de dados
 - **Redis** - Cache e sessões
-- **JWT Auth** - Autenticação
+- **JWT Auth (tymon/jwt-auth)** - Autenticação segura
 - **Docker & Docker Compose** - Containerização
 - **Nginx** - Servidor web
 
-**Frontend:**
-- **Vue 3** - Framework JavaScript reativo
-- **Vue Router 4** - Roteamento SPA
-- **Pinia** - Gerenciamento de estado
-- **TailwindCSS** - Framework CSS utility-first
-- **Axios** - Cliente HTTP
-- **Heroicons** - Ícones SVG
+**Padrões de Projeto:**
+- Repository Pattern
+- Form Request Validation
+- Traits (ApiResponse)
+- Eloquent ORM com Relationships
+- RESTful API Standards
 
 ## 📦 Recursos
 
-- ✅ Autenticação JWT
-- ✅ CRUD de Marcas
-- ✅ CRUD de Modelos
-- ✅ CRUD de Carros
-- ✅ CRUD de Clientes
-- ✅ CRUD de Locações
+### Core Features
+- ✅ Autenticação JWT com refresh token
+- ✅ CRUD completo de Marcas (com upload de imagens)
+- ✅ CRUD completo de Modelos (com upload de imagens)
+- ✅ CRUD completo de Carros
+- ✅ CRUD completo de Clientes
+- ✅ CRUD completo de Locações
+
+### Features Avançadas
 - ✅ Policies de autorização
-- ✅ Repositories pattern
-- ✅ Factories e Seeders
-- ✅ Validação de requisições
+- ✅ Repository pattern para queries complexas
+- ✅ Filtros dinâmicos e paginação
+- ✅ Eager loading otimizado
+- ✅ Validações robustas com Form Requests
+- ✅ Respostas JSON padronizadas
+- ✅ Tratamento de erros consistente
+- ✅ Seeders com dados realistas
+- ✅ Índices de banco para performance
+
+### API Features
+- ✅ Versionamento de API (v1)
+- ✅ Filtros por query string
+- ✅ Seleção de campos específicos
+- ✅ Relacionamentos configuráveis
+- ✅ Mensagens de erro em português
+- ✅ Códigos HTTP apropriados
 
 ## 🛠️ Requisitos
 

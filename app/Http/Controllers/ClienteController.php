@@ -3,167 +3,143 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreClienteRequest;
+use App\Http\Requests\UpdateClienteRequest;
 use App\Repositories\ClienteRepository;
+use App\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ClienteController extends Controller
 {
-    public function __construct(Cliente $cliente) {
+    use ApiResponse;
+
+    protected $cliente;
+
+    public function __construct(Cliente $cliente)
+    {
         $this->cliente = $cliente;
     }
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $clienteRepository = new ClienteRepository($this->cliente);
 
-        if($request->has('filtro')) {
+        if ($request->has('filtro')) {
             $clienteRepository->filtro($request->filtro);
         }
 
-        if($request->has('atributos')) {
+        if ($request->has('atributos')) {
             $clienteRepository->selectAtributos($request->atributos);
         }
 
-        return response()->json($clienteRepository->getResultadoPaginado(10), 200);
+        $resultado = $clienteRepository->getResultadoPaginado(10);
+
+        return $this->successResponse($resultado, 'Clientes listados com sucesso');
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  \App\Http\Requests\StoreClienteRequest  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function store(StoreClienteRequest $request): JsonResponse
     {
         try {
-            $request->validate($this->cliente->rules());
+            $cliente = $this->cliente->create($request->validated());
 
-            $cliente = $this->cliente->create([
-                'nome' => $request->nome,
-                'email' => $request->email,
-                'cpf' => $request->cpf,
-                'telefone' => $request->telefone,
-                'endereco' => $request->endereco
-            ]);
-
-            return response()->json($cliente, 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            throw $e;
+            return $this->createdResponse($cliente, 'Cliente criado com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao criar cliente',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao criar cliente: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Cliente  $cliente
-     * @return \Illuminate\Http\Response
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id)
+    public function show($id): JsonResponse
     {
         $cliente = $this->cliente->find($id);
-        if($cliente === null) {
-            return response()->json([
-                'message' => 'Cliente não encontrado',
-                'error' => 'O cliente solicitado não existe ou foi removido'
-            ], 404);
+
+        if (!$cliente) {
+            return $this->notFoundResponse('Cliente não encontrado');
         }
 
-        return response()->json($cliente, 200);
+        return $this->successResponse($cliente, 'Cliente encontrado com sucesso');
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Cliente  $cliente
-     * @return \Illuminate\Http\Response
+     * @param  \App\Http\Requests\UpdateClienteRequest  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, $id)
+    public function update(UpdateClienteRequest $request, $id): JsonResponse
     {
         try {
             $cliente = $this->cliente->find($id);
 
-            if($cliente === null) {
-                return response()->json([
-                    'message' => 'Cliente não encontrado',
-                    'error' => 'Não foi possível atualizar. O cliente não existe'
-                ], 404);
+            if (!$cliente) {
+                return $this->notFoundResponse('Cliente não encontrado');
             }
 
-            if($request->method() === 'PATCH') {
-                $regrasDinamicas = array();
-
-                foreach($cliente->rules() as $input => $regra) {
-                    if(array_key_exists($input, $request->all())) {
-                        $regrasDinamicas[$input] = $regra;
-                    }
-                }
-
-                $request->validate($regrasDinamicas);
-            } else {
-                $request->validate($cliente->rules());
-            }
-
-            $cliente->fill($request->all());
+            $cliente->fill($request->validated());
             $cliente->save();
 
-            return response()->json($cliente, 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            throw $e;
+            return $this->successResponse($cliente, 'Cliente atualizado com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao atualizar cliente',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao atualizar cliente: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Cliente  $cliente
-     * @return \Illuminate\Http\Response
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         try {
             $cliente = $this->cliente->find($id);
 
-            if($cliente === null) {
-                return response()->json([
-                    'message' => 'Cliente não encontrado',
-                    'error' => 'Não foi possível excluir. O cliente não existe'
-                ], 404);
+            if (!$cliente) {
+                return $this->notFoundResponse('Cliente não encontrado');
             }
 
             $locacoesCount = $cliente->locacoes()->count();
-            if($locacoesCount > 0) {
-                return response()->json([
-                    'message' => 'Não é possível excluir este cliente',
-                    'error' => "Existem {$locacoesCount} locação(ões) vinculada(s) a este cliente. Remova as locações antes de excluir o cliente."
-                ], 400);
+            if ($locacoesCount > 0) {
+                return $this->errorResponse(
+                    "Não é possível excluir este cliente. Existem {$locacoesCount} locação(ões) vinculada(s).",
+                    400
+                );
             }
 
             $cliente->delete();
 
-            return response()->json([
-                'message' => 'Cliente excluído com sucesso'
-            ], 200);
+            return $this->successResponse(null, 'Cliente excluído com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao excluir cliente',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao excluir cliente: ' . $e->getMessage(),
+                500
+            );
         }
     }
 }

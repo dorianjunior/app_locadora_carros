@@ -7,7 +7,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Response;
 
-class UpdateCarroRequest extends FormRequest
+class StoreMarcaRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -26,13 +26,9 @@ class UpdateCarroRequest extends FormRequest
      */
     public function rules()
     {
-        $carroId = $this->route('carro');
-
         return [
-            'modelo_id' => 'sometimes|required|exists:modelos,id',
-            'placa' => 'sometimes|required|string|unique:carros,placa,'.$carroId.'|max:10|regex:/^[A-Z]{3}-[0-9]{4}$/',
-            'disponivel' => 'sometimes|required|boolean',
-            'km' => 'sometimes|required|integer|min:0'
+            'nome' => 'required|string|unique:marcas,nome|min:3|max:100',
+            'imagem' => 'required|file|mimes:png,jpg,jpeg,gif,webp|max:2048'
         ];
     }
 
@@ -44,17 +40,14 @@ class UpdateCarroRequest extends FormRequest
     public function messages()
     {
         return [
-            'modelo_id.required' => 'O modelo é obrigatório',
-            'modelo_id.exists' => 'O modelo selecionado não existe',
-            'placa.required' => 'A placa é obrigatória',
-            'placa.unique' => 'Já existe um carro com esta placa',
-            'placa.max' => 'A placa deve ter no máximo :max caracteres',
-            'placa.regex' => 'A placa deve estar no formato ABC-1234',
-            'disponivel.required' => 'O status de disponibilidade é obrigatório',
-            'disponivel.boolean' => 'O valor de disponibilidade deve ser verdadeiro ou falso',
-            'km.required' => 'A quilometragem é obrigatória',
-            'km.integer' => 'A quilometragem deve ser um número inteiro',
-            'km.min' => 'A quilometragem não pode ser negativa',
+            'nome.required' => 'O nome da marca é obrigatório',
+            'nome.unique' => 'Já existe uma marca com este nome',
+            'nome.min' => 'O nome deve ter no mínimo :min caracteres',
+            'nome.max' => 'O nome deve ter no máximo :max caracteres',
+            'imagem.required' => 'A imagem é obrigatória',
+            'imagem.file' => 'O arquivo deve ser uma imagem válida',
+            'imagem.mimes' => 'A imagem deve ser PNG, JPG, JPEG, GIF ou WebP',
+            'imagem.max' => 'A imagem deve ter no máximo 2MB',
         ];
     }
 

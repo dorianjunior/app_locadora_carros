@@ -2,72 +2,65 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Storage;
 use App\Models\Modelo;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreModeloRequest;
+use App\Http\Requests\UpdateModeloRequest;
 use App\Repositories\ModeloRepository;
+use App\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ModeloController extends Controller
 {
-    public function __construct(Modelo $modelo) {
+    use ApiResponse;
+
+    protected $modelo;
+
+    public function __construct(Modelo $modelo)
+    {
         $this->modelo = $modelo;
     }
 
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $modeloRepository = new ModeloRepository($this->modelo);
 
-        if($request->has('atributos_marca')) {
-            $atributos_marca = 'marca:id,'.$request->atributos_marca;
+        if ($request->has('atributos_marca')) {
+            $atributos_marca = 'marca:id,' . $request->atributos_marca;
             $modeloRepository->selectAtributosRegistrosRelacionados($atributos_marca);
         } else {
             $modeloRepository->selectAtributosRegistrosRelacionados('marca');
         }
 
-        if($request->has('filtro')) {
+        if ($request->has('filtro')) {
             $modeloRepository->filtro($request->filtro);
         }
 
-        if($request->has('atributos')) {
+        if ($request->has('atributos')) {
             $modeloRepository->selectAtributos($request->atributos);
         }
 
-        return response()->json($modeloRepository->getResultadoPaginado(10), 200);
-    }
+        $resultado = $modeloRepository->getResultadoPaginado(10);
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
+        return $this->successResponse($resultado, 'Modelos listados com sucesso');
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param  \App\Http\Requests\StoreModeloRequest  $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function store(StoreModeloRequest $request): JsonResponse
     {
         try {
-            $request->validate($this->modelo->rules(), $this->modelo->feedback());
-
-            if (!$request->hasFile('imagem')) {
-                return response()->json([
-                    'message' => 'Erro ao criar modelo',
-                    'errors' => ['imagem' => ['A imagem é obrigatória']]
-                ], 422);
-            }
-
             $imagem = $request->file('imagem');
             $imagem_urn = $imagem->store('imagens/modelos', 'public');
 
@@ -81,145 +74,108 @@ class ModeloController extends Controller
                 'abs' => $request->abs
             ]);
 
-            return response()->json($modelo, 201);
+            $modelo->load('marca');
+
+            return $this->createdResponse($modelo, 'Modelo criado com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao criar modelo',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao criar modelo: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Modelo  $modelo
-     * @return \Illuminate\Http\Response
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id)
+    public function show($id): JsonResponse
     {
         $modelo = $this->modelo->with('marca')->find($id);
-        if($modelo === null) {
-            return response()->json([
-                'message' => 'Modelo não encontrado',
-                'error' => 'O modelo solicitado não existe ou foi removido'
-            ], 404);
+
+        if (!$modelo) {
+            return $this->notFoundResponse('Modelo não encontrado');
         }
 
-        return response()->json($modelo, 200);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Modelo  $modelo
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Modelo $modelo)
-    {
-        //
+        return $this->successResponse($modelo, 'Modelo encontrado com sucesso');
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Modelo  $modelo
-     * @return \Illuminate\Http\Response
+     * @param  \App\Http\Requests\UpdateModeloRequest  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, $id)
+    public function update(UpdateModeloRequest $request, $id): JsonResponse
     {
         try {
             $modelo = $this->modelo->find($id);
 
-            if($modelo === null) {
-                return response()->json([
-                    'message' => 'Modelo não encontrado',
-                    'error' => 'Não foi possível atualizar. O modelo não existe'
-                ], 404);
+            if (!$modelo) {
+                return $this->notFoundResponse('Modelo não encontrado');
             }
 
-            if($request->method() === 'PATCH') {
-                $regrasDinamicas = array();
-                $feedbackDinamico = array();
-
-                foreach($modelo->rules() as $input => $regra) {
-                    if(array_key_exists($input, $request->all())) {
-                        $regrasDinamicas[$input] = $regra;
-                    }
+            if ($request->hasFile('imagem')) {
+                if ($modelo->imagem && Storage::disk('public')->exists($modelo->imagem)) {
+                    Storage::disk('public')->delete($modelo->imagem);
                 }
 
-                foreach($modelo->feedback() as $input => $mensagem) {
-                    if(array_key_exists(explode('.', $input)[0], $request->all())) {
-                        $feedbackDinamico[$input] = $mensagem;
-                    }
-                }
-
-                $request->validate($regrasDinamicas, $feedbackDinamico);
-            } else {
-                $request->validate($modelo->rules(), $modelo->feedback());
-            }
-
-            // Atualiza a imagem apenas se uma nova foi enviada
-            if($request->file('imagem')) {
-                Storage::disk('public')->delete($modelo->imagem);
                 $imagem = $request->file('imagem');
                 $imagem_urn = $imagem->store('imagens/modelos', 'public');
                 $modelo->imagem = $imagem_urn;
             }
 
-            $modelo->fill($request->all());
+            $modelo->fill($request->except('imagem'));
             $modelo->save();
+            $modelo->load('marca');
 
-            return response()->json($modelo, 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            throw $e;
+            return $this->successResponse($modelo, 'Modelo atualizado com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao atualizar modelo',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao atualizar modelo: ' . $e->getMessage(),
+                500
+            );
         }
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Modelo  $modelo
-     * @return \Illuminate\Http\Response
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         try {
             $modelo = $this->modelo->find($id);
 
-            if($modelo === null) {
-                return response()->json([
-                    'message' => 'Modelo não encontrado',
-                    'error' => 'Não foi possível excluir. O modelo não existe'
-                ], 404);
+            if (!$modelo) {
+                return $this->notFoundResponse('Modelo não encontrado');
             }
 
-            // Verifica se existem carros associados a este modelo
             $carrosCount = $modelo->carros()->count();
-            if($carrosCount > 0) {
-                return response()->json([
-                    'message' => 'Não é possível excluir este modelo',
-                    'error' => "Existem {$carrosCount} carro(s) vinculado(s) a este modelo. Remova ou reatribua os carros antes de excluir o modelo."
-                ], 400);
+            if ($carrosCount > 0) {
+                return $this->errorResponse(
+                    "Não é possível excluir este modelo. Existem {$carrosCount} carro(s) vinculado(s).",
+                    400
+                );
             }
 
-            Storage::disk('public')->delete($modelo->imagem);
+            if ($modelo->imagem && Storage::disk('public')->exists($modelo->imagem)) {
+                Storage::disk('public')->delete($modelo->imagem);
+            }
+
             $modelo->delete();
 
-            return response()->json([
-                'message' => 'Modelo excluído com sucesso'
-            ], 200);
+            return $this->successResponse(null, 'Modelo excluído com sucesso');
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Erro ao excluir modelo',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse(
+                'Erro ao excluir modelo: ' . $e->getMessage(),
+                500
+            );
         }
     }
 }

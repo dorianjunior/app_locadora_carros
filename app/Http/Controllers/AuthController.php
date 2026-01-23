@@ -2,42 +2,103 @@
 
 namespace App\Http\Controllers;
 
+use App\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    public function login(Request $request) {
-        
-        $credenciais = $request->all(['email', 'password']); //[]
+    use ApiResponse;
 
-        //autenticação (email e senha)
-        $token = auth('api')->attempt($credenciais);
-        
-        if($token) { //usuário autenticado com sucesso
-            return response()->json(['token' => $token]);
+    /**
+     * Authenticate user and return JWT token
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function login(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string|min:6'
+        ], [
+            'email.required' => 'O e-mail é obrigatório',
+            'email.email' => 'O e-mail deve ser válido',
+            'password.required' => 'A senha é obrigatória',
+            'password.min' => 'A senha deve ter no mínimo :min caracteres'
+        ]);
 
-        } else { //erro de usuário ou senha
-            return response()->json(['erro' => 'Usuário ou senha inválido!'], 403);
-
-            //401 = Unauthorized -> não autorizado
-            //403 = forbidden -> proibido (login inválido)
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($validator->errors());
         }
 
-        //retornar um Json Web Token
-        return 'login';
+        $credenciais = $request->only(['email', 'password']);
+        $token = auth('api')->attempt($credenciais);
+
+        if ($token) {
+            $user = auth('api')->user();
+
+            return $this->successResponse([
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => auth('api')->factory()->getTTL() * 60,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email
+                ]
+            ], 'Login realizado com sucesso');
+        }
+
+        return $this->forbiddenResponse('E-mail ou senha inválidos');
     }
 
-    public function logout() {
+    /**
+     * Logout user (invalidate token)
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function logout(): JsonResponse
+    {
         auth('api')->logout();
-        return response()->json(['msg' => 'Logout foi realizado com sucesso!']);
+
+        return $this->successResponse(null, 'Logout realizado com sucesso');
     }
 
-    public function refresh() {
-        $token = auth('api')->refresh(); //cliente encaminhe um jwt válido
-        return response()->json(['token' => $token]);
+    /**
+     * Refresh JWT token
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function refresh(): JsonResponse
+    {
+        try {
+            $token = auth('api')->refresh();
+
+            return $this->successResponse([
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => auth('api')->factory()->getTTL() * 60
+            ], 'Token atualizado com sucesso');
+        } catch (\Exception $e) {
+            return $this->unauthorizedResponse('Token inválido ou expirado');
+        }
     }
 
-    public function me() {
-        return response()->json(auth()->user());
+    /**
+     * Get authenticated user data
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function me(): JsonResponse
+    {
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return $this->unauthorizedResponse('Usuário não autenticado');
+        }
+
+        return $this->successResponse($user, 'Dados do usuário recuperados com sucesso');
     }
 }
