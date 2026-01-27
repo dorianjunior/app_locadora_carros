@@ -26,7 +26,8 @@ class UpdateCarroRequest extends FormRequest
      */
     public function rules()
     {
-        $carroId = $this->route('carro');
+        $carro = $this->route('carro');
+        $carroId = $carro instanceof \App\Models\Carro ? $carro->id : $carro;
 
         return [
             'modelo_id' => 'sometimes|required|exists:modelos,id',

@@ -7,7 +7,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Response;
 
-class StoreMarcaRequest extends FormRequest
+class LoginRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,8 +25,8 @@ class StoreMarcaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nome' => ['required', 'string', 'unique:marcas,nome', 'min:3', 'max:100'],
-            'imagem' => ['required', 'file', 'mimes:png,jpg,jpeg,gif,webp', 'max:2048'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:6'],
         ];
     }
 
@@ -38,14 +38,10 @@ class StoreMarcaRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nome.required' => 'O nome da marca é obrigatório',
-            'nome.unique' => 'Já existe uma marca com este nome',
-            'nome.min' => 'O nome deve ter no mínimo :min caracteres',
-            'nome.max' => 'O nome deve ter no máximo :max caracteres',
-            'imagem.required' => 'A imagem é obrigatória',
-            'imagem.file' => 'O arquivo deve ser uma imagem válida',
-            'imagem.mimes' => 'A imagem deve ser PNG, JPG, JPEG, GIF ou WebP',
-            'imagem.max' => 'A imagem deve ter no máximo 2MB',
+            'email.required' => 'O e-mail é obrigatório',
+            'email.email' => 'O e-mail deve ser válido',
+            'password.required' => 'A senha é obrigatória',
+            'password.min' => 'A senha deve ter no mínimo :min caracteres',
         ];
     }
 

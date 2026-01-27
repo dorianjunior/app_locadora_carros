@@ -26,7 +26,8 @@ class UpdateMarcaRequest extends FormRequest
      */
     public function rules()
     {
-        $marcaId = $this->route('marca');
+        $marca = $this->route('marca');
+        $marcaId = $marca instanceof \App\Models\Marca ? $marca->id : $marca;
 
         return [
             'nome' => 'sometimes|required|string|unique:marcas,nome,'.$marcaId.'|min:3|max:100',

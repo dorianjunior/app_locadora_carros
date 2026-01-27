@@ -26,7 +26,8 @@ class UpdateClienteRequest extends FormRequest
      */
     public function rules()
     {
-        $clienteId = $this->route('cliente');
+        $cliente = $this->route('cliente');
+        $clienteId = $cliente instanceof \App\Models\Cliente ? $cliente->id : $cliente;
 
         return [
             'nome' => 'sometimes|required|string|min:3|max:100',

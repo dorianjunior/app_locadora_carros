@@ -26,7 +26,8 @@ class UpdateModeloRequest extends FormRequest
      */
     public function rules()
     {
-        $modeloId = $this->route('modelo');
+        $modelo = $this->route('modelo');
+        $modeloId = $modelo instanceof \App\Models\Modelo ? $modelo->id : $modelo;
 
         return [
             'marca_id' => 'sometimes|required|exists:marcas,id',
