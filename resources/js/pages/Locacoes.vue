@@ -1,12 +1,12 @@
 <template>
   <div>
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+    <!-- Header with editorial hierarchy -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-10 gap-6 pb-6 border-b-2 border-primary-100 dark:border-primary-900/30">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Locações</h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">Gerencie as locações de veículos</p>
+        <h1 class="text-display-sm font-display font-bold text-earth-900 dark:text-white mb-2">Locações</h1>
+        <p class="text-lg text-sage-600 dark:text-gray-400 font-medium">Gerencie as locações de veículos</p>
       </div>
-      <button @click="openModal()" class="inline-flex items-center justify-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors">
+      <button @click="openModal()" class="btn btn-primary group">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -14,19 +14,26 @@
       </button>
     </div>
 
-    <!-- Search -->
-    <div class="mb-6">
-      <input
-        v-model="searchQuery"
-        @input="searchLocacoes"
-        type="text"
-        placeholder="Buscar locações..."
-        class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-      />
+    <!-- Search with refined design -->
+    <div class="mb-8">
+      <div class="relative group">
+        <div class="absolute left-4 top-1/2 -translate-y-1/2 text-sage-400 group-focus-within:text-primary-500 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <input
+          v-model="searchQuery"
+          @input="searchLocacoes"
+          type="text"
+          placeholder="Buscar locações..."
+          class="input pl-12"
+        />
+      </div>
     </div>
 
-    <!-- Table -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <!-- Table with organic design -->
+    <div class="card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/50">
@@ -74,10 +81,10 @@
                 <div class="text-sm text-gray-900 dark:text-white">R$ {{ formatMoney(locacao.valor_diaria) }}/dia</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="locacao.data_final_realizado_periodo" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                <span v-if="locacao.data_final_realizado_periodo" class="px-3 py-1.5 inline-flex text-xs font-bold rounded-2xl bg-gradient-to-br from-sage-100 to-sage-200 text-sage-700 dark:from-sage-900/40 dark:to-sage-800/40 dark:text-sage-300 shadow-sm">
                   Finalizada
                 </span>
-                <span v-else class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                <span v-else class="px-3 py-1.5 inline-flex text-xs font-bold rounded-2xl bg-gradient-to-br from-primary-100 to-primary-200 text-primary-700 dark:from-primary-900/40 dark:to-primary-800/40 dark:text-primary-300 shadow-sm animate-pulse-soft">
                   Em andamento
                 </span>
               </td>

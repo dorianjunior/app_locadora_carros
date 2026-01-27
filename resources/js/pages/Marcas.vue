@@ -1,50 +1,57 @@
 <template>
   <div>
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
+    <!-- Header with editorial hierarchy -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-10 gap-6 pb-6 border-b-2 border-primary-100 dark:border-primary-900/30">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Marcas</h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">Gerencie as marcas de veículos</p>
+        <h1 class="text-display-sm font-display font-bold text-earth-900 dark:text-white mb-2">Marcas</h1>
+        <p class="text-lg text-sage-600 dark:text-gray-400 font-medium">Gerencie as marcas de veículos</p>
       </div>
-      <button @click="openModal()" class="inline-flex items-center justify-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg transition-colors">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      <button @click="openModal()" class="btn btn-primary group">
+        <svg class="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         Nova Marca
       </button>
     </div>
 
-    <!-- Search and Filter -->
-    <div class="mb-6">
-      <input
-        v-model="searchQuery"
-        @input="searchMarcas"
-        type="text"
-        placeholder="Buscar marcas..."
-        class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-      />
+    <!-- Search with refined design -->
+    <div class="mb-8">
+      <div class="relative group">
+        <div class="absolute left-4 top-1/2 -translate-y-1/2 text-sage-400 group-focus-within:text-primary-500 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <input
+          v-model="searchQuery"
+          @input="searchMarcas"
+          type="text"
+          placeholder="Buscar marcas..."
+          class="input pl-12"
+        />
+      </div>
     </div>
 
-    <!-- Table -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <!-- Table with organic design -->
+    <div class="card overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-900/50">
+        <table class="min-w-full divide-y-2 divide-sage-100 dark:divide-earth-700">
+          <thead class="bg-gradient-to-r from-sage-50 to-transparent dark:from-earth-900/30 dark:to-transparent">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-6 py-4 text-left text-xs font-bold text-sage-800 dark:text-sage-300 uppercase tracking-wider">
                 Nome
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-6 py-4 text-left text-xs font-bold text-sage-800 dark:text-sage-300 uppercase tracking-wider">
                 Imagem
               </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-6 py-4 text-right text-xs font-bold text-sage-800 dark:text-sage-300 uppercase tracking-wider">
                 Ações
               </th>
             </tr>
           </thead>
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody class="bg-white dark:bg-earth-800 divide-y divide-sage-100 dark:divide-earth-700">
             <tr v-if="loading">
-              <td colspan="3" class="px-6 py-12 text-center">
+              <td colspan="3" class="px-6 py-16 text-center">
                 <div class="flex items-center justify-center">
                   <svg class="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -54,26 +61,29 @@
               </td>
             </tr>
             <tr v-else-if="marcas.length === 0">
-              <td colspan="3" class="px-6 py-12 text-center">
-                <svg class="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <td colspan="3" class="px-6 py-16 text-center">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-sage-100 to-sage-200 dark:from-sage-900/30 dark:to-sage-800/30 rounded-[28px] mb-5">
+                  <svg class="w-10 h-10 text-sage-500 dark:text-sage-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-                </svg>
-                <p class="text-gray-500 dark:text-gray-400">Nenhuma marca cadastrada</p>
+                  </svg>
+                </div>
+                <p class="text-base font-semibold text-sage-600 dark:text-sage-400">Nenhuma marca cadastrada</p>
+                <p class="text-sm text-sage-500 dark:text-sage-500 mt-1">Clique em "Nova Marca" para começar</p>
               </td>
             </tr>
-            <tr v-else v-for="marca in marcas" :key="marca.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <tr v-else v-for="marca in marcas" :key="marca.id" class="hover:bg-sage-50/50 dark:hover:bg-earth-700/30 transition-all duration-200 group">
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ marca.nome }}</div>
+                <div class="text-sm font-semibold text-earth-900 dark:text-white">{{ marca.nome }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <img v-if="marca.imagem" :src="`/storage/${marca.imagem}`" alt="" class="w-10 h-10 rounded object-cover">
-                <span v-else class="text-sm text-gray-400 dark:text-gray-500">Sem imagem</span>
+                <img v-if="marca.imagem" :src="`/storage/${marca.imagem}`" alt="" class="w-12 h-12 rounded-2xl object-cover shadow-sm group-hover:scale-105 transition-transform duration-200">
+                <span v-else class="text-sm text-sage-500 dark:text-sage-500">Sem imagem</span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                <button @click="openModal(marca)" class="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300">
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold space-x-4">
+                <button @click="openModal(marca)" class="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
                   Editar
                 </button>
-                <button @click="deleteMarca(marca.id)" class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
+                <button @click="deleteMarca(marca.id)" class="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
                   Excluir
                 </button>
               </td>
@@ -83,26 +93,26 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="pagination.last_page > 1" class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
+      <div v-if="pagination.last_page > 1" class="px-6 py-5 bg-gradient-to-r from-sage-50 to-transparent dark:from-earth-900/30 dark:to-transparent border-t-2 border-sage-100 dark:border-earth-700">
         <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700 dark:text-gray-400">
-            Mostrando <span class="font-medium">{{ pagination.from }}</span> a <span class="font-medium">{{ pagination.to }}</span> de <span class="font-medium">{{ pagination.total }}</span> marcas
+          <div class="text-sm font-medium text-sage-700 dark:text-sage-300">
+            Mostrando <span class="font-bold text-primary-600 dark:text-primary-400">{{ pagination.from }}</span> a <span class="font-bold text-primary-600 dark:text-primary-400">{{ pagination.to }}</span> de <span class="font-bold text-primary-600 dark:text-primary-400">{{ pagination.total }}</span> marcas
           </div>
           <div class="flex items-center space-x-2">
             <button
               @click="fetchMarcas(pagination.current_page - 1)"
               :disabled="pagination.current_page === 1"
-              class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="px-4 py-2 bg-white dark:bg-earth-800 border-2 border-sage-200 dark:border-earth-600 rounded-xl text-sm font-semibold text-sage-700 dark:text-sage-300 hover:bg-sage-50 hover:border-primary-300 dark:hover:bg-earth-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
             >
               Anterior
             </button>
-            <span class="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
-              Página {{ pagination.current_page }} de {{ pagination.last_page }}
+            <span class="px-4 py-2 text-sm font-bold text-earth-900 dark:text-white">
+              {{ pagination.current_page }} <span class="text-sage-500 dark:text-sage-500">de</span> {{ pagination.last_page }}
             </span>
             <button
               @click="fetchMarcas(pagination.current_page + 1)"
               :disabled="pagination.current_page === pagination.last_page"
-              class="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="px-4 py-2 bg-white dark:bg-earth-800 border-2 border-sage-200 dark:border-earth-600 rounded-xl text-sm font-semibold text-sage-700 dark:text-sage-300 hover:bg-sage-50 hover:border-primary-300 dark:hover:bg-earth-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
             >
               Próxima
             </button>
