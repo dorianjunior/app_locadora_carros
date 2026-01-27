@@ -90,6 +90,10 @@ class AuthController extends Controller
             ], 401);
         }
 
-        return response()->json(new UserResource($user));
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuário autenticado',
+            'data' => new UserResource($user),
+        ]);
     }
 }

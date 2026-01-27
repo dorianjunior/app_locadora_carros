@@ -71,8 +71,18 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+
+  // Se a rota requer autenticação e há um token, verificar se ainda é válido
+  if (to.meta.requiresAuth && authStore.token && !authStore.user) {
+    try {
+      await authStore.checkAuth()
+    } catch (error) {
+      // Se falhar, redireciona para login
+      return next({ name: 'login' })
+    }
+  }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login' })

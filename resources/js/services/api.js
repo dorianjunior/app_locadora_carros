@@ -10,7 +10,6 @@ const api = axios.create({
   }
 })
 
-
 let isLoggingOut = false
 
 api.interceptors.request.use(
@@ -35,17 +34,16 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Evitar múltiplos logouts simultâneos
       if (!isLoggingOut) {
         isLoggingOut = true
         const authStore = useAuthStore()
-        authStore.logout()
-
-        // Pequeno delay para garantir que o logout complete antes de redirecionar
-        setTimeout(() => {
-          router.push({ name: 'login' })
+        
+        // Usar clearAuth ao invés de modificar diretamente
+        authStore.clearAuth()
+        
+        router.push({ name: 'login' }).finally(() => {
           isLoggingOut = false
-        }, 100)
+        })
       }
     }
     return Promise.reject(error)

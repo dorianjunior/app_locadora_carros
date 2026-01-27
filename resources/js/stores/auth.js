@@ -6,7 +6,8 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     token: localStorage.getItem('token') || null,
     loading: false,
-    error: null
+    error: null,
+    isCheckingAuth: false // Flag para evitar múltiplas chamadas
   }),
 
   getters: {
@@ -46,36 +47,70 @@ export const useAuthStore = defineStore('auth', {
 
         if (response.data.success) {
           this.user = response.data.data
+          return true
         } else {
-          this.logout()
+          this.clearAuth()
+          return false
         }
       } catch (error) {
-        this.logout()
+        // Apenas limpar auth se for erro 401 (não autorizado)
+        if (error.response?.status === 401) {
+          this.clearAuth()
+        }
+        throw error
       }
+    },
+
+    clearAuth() {
+      this.user = null
+      this.token = null
+      localStorage.removeItem('token')
     },
 
     async logout() {
-      try {
-        await axios.post('/api/v1/logout', {}, {
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
-      } catch (error) {
-        // Ignora erros no logout
-      } finally {
-        this.user = null
-        this.token = null
-        localStorage.removeItem('token')
+      if (this.token) {
+        try {
+          await axios.post('/api/v1/logout', {}, {
+            headers: { Authorization: `Bearer ${this.token}` }
+          })
+        } catch (error) {
+        }
       }
+      this.clearAuth()
     },
 
     async checkAuth() {
+      if (this.user) {
+        return true
+      }
+
+      if (this.isCheckingAuth) {
+        return new Promise((resolve, reject) => {
+          const interval = setInterval(() => {
+            if (!this.isCheckingAuth) {
+              clearInterval(interval)
+              if (this.user) {
+                resolve(true)
+              } else {
+                reject(new Error('Auth check failed'))
+              }
+            }
+          }, 50)
+        })
+      }
+
       if (this.token) {
+        this.isCheckingAuth = true
         try {
           await this.fetchUser()
+          this.isCheckingAuth = false
+          return true
         } catch (error) {
-          // Ignora erros na verificação
+          this.isCheckingAuth = false
+          throw error
         }
       }
+      return false
     }
   }
 })
