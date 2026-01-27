@@ -170,34 +170,24 @@ const stats = ref({
 const fetchStats = async () => {
   loading.value = true
   try {
-    const [marcas, modelos, carros, clientes, locacoes] = await Promise.all([
-      api.get('/marca'),
-      api.get('/modelo'),
-      api.get('/carro'),
-      api.get('/cliente'),
-      api.get('/locacao?per_page=9999') // Buscar todas as locações para filtrar por status
-    ])
-
-    // Pegar o total da paginação (campo 'total' do Laravel)
-    const totalMarcas = marcas.data.data?.total || 0
-    const totalModelos = modelos.data.data?.total || 0
-    const totalCarros = carros.data.data?.total || 0
-    const totalClientes = clientes.data.data?.total || 0
-
-    // Para locações, precisamos dos dados para filtrar por status
-    const locacoesArray = locacoes.data.data?.data || []
+    // Usar o novo endpoint de estatísticas do dashboard
+    const response = await api.get('/dashboard/stats')
+    const data = response.data.data
 
     stats.value = {
-      totalMarcas,
-      totalModelos,
-      totalCarros,
-      totalClientes,
-      locacoesAtivas: locacoesArray.filter(l => !l.data_final_realizado_periodo).length || 0,
-      locacoesFinalizadas: locacoesArray.filter(l => l.data_final_realizado_periodo).length || 0
+      totalMarcas: data.total_marcas || 0,
+      totalModelos: data.total_modelos || 0,
+      totalCarros: data.total_carros || 0,
+      totalClientes: data.total_clientes || 0,
+      locacoesAtivas: data.locacoes_ativas || 0,
+      locacoesFinalizadas: data.locacoes_finalizadas || 0
     }
   } catch (error) {
-    console.error('Erro ao carregar estatísticas:', error)
-    showAlert.error('Erro ao carregar estatísticas do dashboard')
+    // Não exibir alerta para erro 401 (não autorizado), pois o interceptor já redireciona para login
+    if (error.response?.status !== 401) {
+      console.error('Erro ao carregar estatísticas:', error)
+      showAlert.error('Erro ao carregar estatísticas do dashboard')
+    }
   } finally {
     loading.value = false
   }
