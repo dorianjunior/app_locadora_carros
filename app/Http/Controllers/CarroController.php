@@ -61,6 +61,25 @@ class CarroController extends Controller
     }
 
     /**
+     * Get all carros without pagination (for dropdowns)
+     */
+    public function all(): JsonResponse
+    {
+        $carros = $this->carro
+            ->with(['modelo:id,nome,marca_id', 'modelo.marca:id,nome'])
+            ->select('id', 'placa', 'modelo_id', 'disponivel')
+            ->where('disponivel', true)
+            ->orderBy('placa')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Carros listados com sucesso',
+            'data' => CarroResource::collection($carros),
+        ]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(StoreCarroRequest $request): CarroResource

@@ -12,6 +12,9 @@ Route::prefix('v1')->middleware('jwt.auth')->group(function () {
     Route::get('me', [AuthController::class, 'me']);
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('marca/all', [MarcaController::class, 'all']);
+    Route::get('modelo/all', [ModeloController::class, 'all']);
+    Route::get('cliente/all', [ClienteController::class, 'all']);
+    Route::get('carro/all', [CarroController::class, 'all']);
     Route::apiResource('cliente', ClienteController::class);
     Route::apiResource('carro', CarroController::class);
     Route::apiResource('locacao', LocacaoController::class);

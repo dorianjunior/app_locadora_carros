@@ -10,7 +10,6 @@ use App\Repositories\MarcaRepository;
 use App\Services\MarcaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class MarcaController extends Controller
 {
@@ -56,14 +55,18 @@ class MarcaController extends Controller
     /**
      * Get all marcas without pagination (for dropdowns)
      */
-    public function all(): AnonymousResourceCollection
+    public function all(): JsonResponse
     {
         $marcas = $this->marca
             ->select('id', 'nome')
             ->orderBy('nome')
             ->get();
 
-        return MarcaResource::collection($marcas);
+        return response()->json([
+            'success' => true,
+            'message' => 'Marcas listadas com sucesso',
+            'data' => MarcaResource::collection($marcas),
+        ]);
     }
 
     /**

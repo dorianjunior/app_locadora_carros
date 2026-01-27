@@ -46,6 +46,23 @@ class ClienteController extends Controller
     }
 
     /**
+     * Get all clientes without pagination (for dropdowns)
+     */
+    public function all(): JsonResponse
+    {
+        $clientes = $this->cliente
+            ->select('id', 'nome')
+            ->orderBy('nome')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Clientes listados com sucesso',
+            'data' => ClienteResource::collection($clientes),
+        ]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(StoreClienteRequest $request): ClienteResource

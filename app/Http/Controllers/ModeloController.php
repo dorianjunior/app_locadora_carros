@@ -53,6 +53,24 @@ class ModeloController extends Controller
     }
 
     /**
+     * Get all modelos without pagination (for dropdowns)
+     */
+    public function all(): JsonResponse
+    {
+        $modelos = $this->modelo
+            ->with('marca:id,nome')
+            ->select('id', 'nome', 'marca_id')
+            ->orderBy('nome')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Modelos listados com sucesso',
+            'data' => ModeloResource::collection($modelos),
+        ]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(StoreModeloRequest $request): ModeloResource
