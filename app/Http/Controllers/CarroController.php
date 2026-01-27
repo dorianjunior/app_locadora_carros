@@ -5,21 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Carro;
 use App\Http\Requests\StoreCarroRequest;
 use App\Http\Requests\UpdateCarroRequest;
+use App\Http\Resources\CarroResource;
 use App\Repositories\CarroRepository;
-use App\Traits\ApiResponse;
+use App\Services\CarroService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CarroController extends Controller
 {
-    use ApiResponse;
-
-    protected $carro;
-
-    public function __construct(Carro $carro)
-    {
-        $this->carro = $carro;
-    }
+    public function __construct(
+        private readonly CarroService $carroService,
+        private readonly Carro $carro
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -56,107 +53,62 @@ class CarroController extends Controller
 
         $resultado = $carroRepository->getResultadoPaginado(10);
 
-        return $this->successResponse($resultado, 'Carros listados com sucesso');
+        return response()->json([
+            'success' => true,
+            'message' => 'Carros listados com sucesso',
+            'data' => $resultado,
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\StoreCarroRequest  $request
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(StoreCarroRequest $request): JsonResponse
+    public function store(StoreCarroRequest $request): CarroResource
     {
-        try {
-            $carro = $this->carro->create($request->validated());
-            $carro->load('modelo.marca');
+        $carro = $this->carroService->createCarro($request->validated());
+        $carro->load('modelo.marca');
 
-            return $this->createdResponse($carro, 'Carro criado com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao criar carro: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new CarroResource($carro);
     }
 
     /**
      * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id): JsonResponse
+    public function show(Carro $carro): CarroResource
     {
-        $carro = $this->carro->with('modelo.marca')->find($id);
+        $carro->load('modelo.marca');
 
-        if (!$carro) {
-            return $this->notFoundResponse('Carro não encontrado');
-        }
-
-        return $this->successResponse($carro, 'Carro encontrado com sucesso');
+        return new CarroResource($carro);
     }
 
     /**
      * Update the specified resource in storage.
-     *
-     * @param  \App\Http\Requests\UpdateCarroRequest  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(UpdateCarroRequest $request, $id): JsonResponse
+    public function update(UpdateCarroRequest $request, Carro $carro): CarroResource
     {
-        try {
-            $carro = $this->carro->find($id);
+        $carro = $this->carroService->updateCarro($carro, $request->validated());
+        $carro->load('modelo.marca');
 
-            if (!$carro) {
-                return $this->notFoundResponse('Carro não encontrado');
-            }
-
-            $carro->fill($request->validated());
-            $carro->save();
-            $carro->load('modelo.marca');
-
-            return $this->successResponse($carro, 'Carro atualizado com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao atualizar carro: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new CarroResource($carro);
     }
 
     /**
      * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id): JsonResponse
+    public function destroy(Carro $carro): JsonResponse
     {
         try {
-            $carro = $this->carro->find($id);
+            $this->carroService->deleteCarro($carro);
 
-            if (!$carro) {
-                return $this->notFoundResponse('Carro não encontrado');
-            }
-
-            $locacoesCount = $carro->locacoes()->count();
-            if ($locacoesCount > 0) {
-                return $this->errorResponse(
-                    "Não é possível excluir este carro. Existem {$locacoesCount} locação(ões) vinculada(s).",
-                    400
-                );
-            }
-
-            $carro->delete();
-
-            return $this->successResponse(null, 'Carro excluído com sucesso');
+            return response()->json([
+                'success' => true,
+                'message' => 'Carro excluído com sucesso',
+            ]);
         } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao excluir carro: ' . $e->getMessage(),
-                500
-            );
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 }

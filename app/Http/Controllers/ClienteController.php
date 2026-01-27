@@ -5,21 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Http\Requests\StoreClienteRequest;
 use App\Http\Requests\UpdateClienteRequest;
+use App\Http\Resources\ClienteResource;
 use App\Repositories\ClienteRepository;
-use App\Traits\ApiResponse;
+use App\Services\ClienteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ClienteController extends Controller
 {
-    use ApiResponse;
-
-    protected $cliente;
-
-    public function __construct(Cliente $cliente)
-    {
-        $this->cliente = $cliente;
-    }
+    public function __construct(
+        private readonly ClienteService $clienteService,
+        private readonly Cliente $cliente
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -41,105 +38,58 @@ class ClienteController extends Controller
 
         $resultado = $clienteRepository->getResultadoPaginado(10);
 
-        return $this->successResponse($resultado, 'Clientes listados com sucesso');
+        return response()->json([
+            'success' => true,
+            'message' => 'Clientes listados com sucesso',
+            'data' => $resultado,
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\StoreClienteRequest  $request
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(StoreClienteRequest $request): JsonResponse
+    public function store(StoreClienteRequest $request): ClienteResource
     {
-        try {
-            $cliente = $this->cliente->create($request->validated());
+        $cliente = $this->clienteService->createCliente($request->validated());
 
-            return $this->createdResponse($cliente, 'Cliente criado com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao criar cliente: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new ClienteResource($cliente);
     }
 
     /**
      * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id): JsonResponse
+    public function show(Cliente $cliente): ClienteResource
     {
-        $cliente = $this->cliente->find($id);
-
-        if (!$cliente) {
-            return $this->notFoundResponse('Cliente não encontrado');
-        }
-
-        return $this->successResponse($cliente, 'Cliente encontrado com sucesso');
+        return new ClienteResource($cliente);
     }
 
     /**
      * Update the specified resource in storage.
-     *
-     * @param  \App\Http\Requests\UpdateClienteRequest  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(UpdateClienteRequest $request, $id): JsonResponse
+    public function update(UpdateClienteRequest $request, Cliente $cliente): ClienteResource
     {
-        try {
-            $cliente = $this->cliente->find($id);
+        $cliente = $this->clienteService->updateCliente($cliente, $request->validated());
 
-            if (!$cliente) {
-                return $this->notFoundResponse('Cliente não encontrado');
-            }
-
-            $cliente->fill($request->validated());
-            $cliente->save();
-
-            return $this->successResponse($cliente, 'Cliente atualizado com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao atualizar cliente: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new ClienteResource($cliente);
     }
 
     /**
      * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id): JsonResponse
+    public function destroy(Cliente $cliente): JsonResponse
     {
         try {
-            $cliente = $this->cliente->find($id);
+            $this->clienteService->deleteCliente($cliente);
 
-            if (!$cliente) {
-                return $this->notFoundResponse('Cliente não encontrado');
-            }
-
-            $locacoesCount = $cliente->locacoes()->count();
-            if ($locacoesCount > 0) {
-                return $this->errorResponse(
-                    "Não é possível excluir este cliente. Existem {$locacoesCount} locação(ões) vinculada(s).",
-                    400
-                );
-            }
-
-            $cliente->delete();
-
-            return $this->successResponse(null, 'Cliente excluído com sucesso');
+            return response()->json([
+                'success' => true,
+                'message' => 'Cliente excluído com sucesso',
+            ]);
         } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao excluir cliente: ' . $e->getMessage(),
-                500
-            );
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 }

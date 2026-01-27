@@ -5,22 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Marca;
 use App\Http\Requests\StoreMarcaRequest;
 use App\Http\Requests\UpdateMarcaRequest;
+use App\Http\Resources\MarcaResource;
 use App\Repositories\MarcaRepository;
-use App\Traits\ApiResponse;
+use App\Services\MarcaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class MarcaController extends Controller
 {
-    use ApiResponse;
-
-    protected $marca;
-
-    public function __construct(Marca $marca)
-    {
-        $this->marca = $marca;
-    }
+    public function __construct(
+        private readonly MarcaService $marcaService,
+        private readonly Marca $marca
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -49,146 +46,90 @@ class MarcaController extends Controller
 
         $resultado = $marcaRepository->getResultadoPaginado(10);
 
-        return $this->successResponse($resultado, 'Marcas listadas com sucesso');
+        return response()->json([
+            'success' => true,
+            'message' => 'Marcas listadas com sucesso',
+            'data' => $resultado,
+        ]);
     }
 
     /**
      * Get all marcas without pagination (for dropdowns)
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function all(): JsonResponse
+    public function all(): AnonymousResourceCollection
     {
-        $marcas = $this->marca->select('id', 'nome')
+        $marcas = $this->marca
+            ->select('id', 'nome')
             ->orderBy('nome')
             ->get();
 
-        return $this->successResponse($marcas, 'Marcas listadas com sucesso');
+        return MarcaResource::collection($marcas);
     }
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\StoreMarcaRequest  $request
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(StoreMarcaRequest $request): JsonResponse
+    public function store(StoreMarcaRequest $request): MarcaResource
     {
-        try {
-            $imagem = $request->file('imagem');
-            $imagem_urn = $imagem->store('imagens/marcas', 'public');
+        $validated = $request->validated();
 
-            $marca = $this->marca->create([
-                'nome' => $request->nome,
-                'imagem' => $imagem_urn
-            ]);
+        $marca = $this->marcaService->createMarca(
+            nome: $validated['nome'],
+            imagem: $request->file('imagem')
+        );
 
-            $marca->load('modelos');
+        $marca->load('modelos');
 
-            return $this->createdResponse($marca, 'Marca criada com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao criar marca: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new MarcaResource($marca);
     }
 
     /**
      * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id): JsonResponse
+    public function show(Marca $marca): MarcaResource
     {
-        $marca = $this->marca->with('modelos')->find($id);
+        $marca->load('modelos');
 
-        if (!$marca) {
-            return $this->notFoundResponse('Marca não encontrada');
-        }
-
-        return $this->successResponse($marca, 'Marca encontrada com sucesso');
+        return new MarcaResource($marca);
     }
 
     /**
      * Update the specified resource in storage.
-     *
-     * @param  \App\Http\Requests\UpdateMarcaRequest  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(UpdateMarcaRequest $request, $id): JsonResponse
+    public function update(UpdateMarcaRequest $request, Marca $marca): MarcaResource
     {
-        try {
-            $marca = $this->marca->find($id);
+        $validated = $request->validated();
 
-            if (!$marca) {
-                return $this->notFoundResponse('Marca não encontrada');
-            }
+        $marca = $this->marcaService->updateMarca(
+            marca: $marca,
+            nome: $validated['nome'] ?? null,
+            imagem: $request->file('imagem')
+        );
 
-            if ($request->hasFile('imagem')) {
-                // Remove a imagem antiga
-                if ($marca->imagem && Storage::disk('public')->exists($marca->imagem)) {
-                    Storage::disk('public')->delete($marca->imagem);
-                }
+        $marca->load('modelos');
 
-                $imagem = $request->file('imagem');
-                $imagem_urn = $imagem->store('imagens/marcas', 'public');
-                $marca->imagem = $imagem_urn;
-            }
-
-            if ($request->has('nome')) {
-                $marca->nome = $request->nome;
-            }
-
-            $marca->save();
-            $marca->load('modelos');
-
-            return $this->successResponse($marca, 'Marca atualizada com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao atualizar marca: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new MarcaResource($marca);
     }
 
     /**
      * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id): JsonResponse
+    public function destroy(Marca $marca): JsonResponse
     {
-        try {
-            $marca = $this->marca->find($id);
+        $modelosCount = $marca->modelos()->count();
 
-            if (!$marca) {
-                return $this->notFoundResponse('Marca não encontrada');
-            }
-
-            $modelosCount = $marca->modelos()->count();
-            if ($modelosCount > 0) {
-                return $this->errorResponse(
-                    "Não é possível excluir esta marca. Existem {$modelosCount} modelo(s) vinculado(s).",
-                    400
-                );
-            }
-
-            if ($marca->imagem && Storage::disk('public')->exists($marca->imagem)) {
-                Storage::disk('public')->delete($marca->imagem);
-            }
-
-            $marca->delete();
-
-            return $this->successResponse(null, 'Marca excluída com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao excluir marca: ' . $e->getMessage(),
-                500
-            );
+        if ($modelosCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Não é possível excluir esta marca. Existem {$modelosCount} modelo(s) vinculado(s).",
+            ], 400);
         }
+
+        $this->marcaService->deleteMarca($marca);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Marca excluída com sucesso',
+        ]);
     }
 }

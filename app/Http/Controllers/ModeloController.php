@@ -5,22 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Modelo;
 use App\Http\Requests\StoreModeloRequest;
 use App\Http\Requests\UpdateModeloRequest;
+use App\Http\Resources\ModeloResource;
 use App\Repositories\ModeloRepository;
-use App\Traits\ApiResponse;
+use App\Services\ModeloService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ModeloController extends Controller
 {
-    use ApiResponse;
-
-    protected $modelo;
-
-    public function __construct(Modelo $modelo)
-    {
-        $this->modelo = $modelo;
-    }
+    public function __construct(
+        private readonly ModeloService $modeloService,
+        private readonly Modelo $modelo
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -49,133 +45,62 @@ class ModeloController extends Controller
 
         $resultado = $modeloRepository->getResultadoPaginado(10);
 
-        return $this->successResponse($resultado, 'Modelos listados com sucesso');
+        return response()->json([
+            'success' => true,
+            'message' => 'Modelos listados com sucesso',
+            'data' => $resultado,
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\StoreModeloRequest  $request
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(StoreModeloRequest $request): JsonResponse
+    public function store(StoreModeloRequest $request): ModeloResource
     {
-        try {
-            $imagem = $request->file('imagem');
-            $imagem_urn = $imagem->store('imagens/modelos', 'public');
+        $modelo = $this->modeloService->createModelo($request->validated());
+        $modelo->load('marca');
 
-            $modelo = $this->modelo->create([
-                'marca_id' => $request->marca_id,
-                'nome' => $request->nome,
-                'imagem' => $imagem_urn,
-                'numero_portas' => $request->numero_portas,
-                'lugares' => $request->lugares,
-                'air_bag' => $request->air_bag,
-                'abs' => $request->abs
-            ]);
-
-            $modelo->load('marca');
-
-            return $this->createdResponse($modelo, 'Modelo criado com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao criar modelo: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new ModeloResource($modelo);
     }
 
     /**
      * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id): JsonResponse
+    public function show(Modelo $modelo): ModeloResource
     {
-        $modelo = $this->modelo->with('marca')->find($id);
+        $modelo->load('marca');
 
-        if (!$modelo) {
-            return $this->notFoundResponse('Modelo não encontrado');
-        }
-
-        return $this->successResponse($modelo, 'Modelo encontrado com sucesso');
+        return new ModeloResource($modelo);
     }
 
     /**
      * Update the specified resource in storage.
-     *
-     * @param  \App\Http\Requests\UpdateModeloRequest  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(UpdateModeloRequest $request, $id): JsonResponse
+    public function update(UpdateModeloRequest $request, Modelo $modelo): ModeloResource
     {
-        try {
-            $modelo = $this->modelo->find($id);
+        $modelo = $this->modeloService->updateModelo($modelo, $request->validated());
+        $modelo->load('marca');
 
-            if (!$modelo) {
-                return $this->notFoundResponse('Modelo não encontrado');
-            }
-
-            if ($request->hasFile('imagem')) {
-                if ($modelo->imagem && Storage::disk('public')->exists($modelo->imagem)) {
-                    Storage::disk('public')->delete($modelo->imagem);
-                }
-
-                $imagem = $request->file('imagem');
-                $imagem_urn = $imagem->store('imagens/modelos', 'public');
-                $modelo->imagem = $imagem_urn;
-            }
-
-            $modelo->fill($request->except('imagem'));
-            $modelo->save();
-            $modelo->load('marca');
-
-            return $this->successResponse($modelo, 'Modelo atualizado com sucesso');
-        } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao atualizar modelo: ' . $e->getMessage(),
-                500
-            );
-        }
+        return new ModeloResource($modelo);
     }
 
     /**
      * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id): JsonResponse
+    public function destroy(Modelo $modelo): JsonResponse
     {
         try {
-            $modelo = $this->modelo->find($id);
+            $this->modeloService->deleteModelo($modelo);
 
-            if (!$modelo) {
-                return $this->notFoundResponse('Modelo não encontrado');
-            }
-
-            $carrosCount = $modelo->carros()->count();
-            if ($carrosCount > 0) {
-                return $this->errorResponse(
-                    "Não é possível excluir este modelo. Existem {$carrosCount} carro(s) vinculado(s).",
-                    400
-                );
-            }
-
-            if ($modelo->imagem && Storage::disk('public')->exists($modelo->imagem)) {
-                Storage::disk('public')->delete($modelo->imagem);
-            }
-
-            $modelo->delete();
-
-            return $this->successResponse(null, 'Modelo excluído com sucesso');
+            return response()->json([
+                'success' => true,
+                'message' => 'Modelo excluído com sucesso',
+            ]);
         } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Erro ao excluir modelo: ' . $e->getMessage(),
-                500
-            );
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 }
