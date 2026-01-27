@@ -10,6 +10,9 @@ const api = axios.create({
   }
 })
 
+
+let isLoggingOut = false
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -32,9 +35,18 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      const authStore = useAuthStore()
-      authStore.logout()
-      router.push({ name: 'login' })
+      // Evitar múltiplos logouts simultâneos
+      if (!isLoggingOut) {
+        isLoggingOut = true
+        const authStore = useAuthStore()
+        authStore.logout()
+
+        // Pequeno delay para garantir que o logout complete antes de redirecionar
+        setTimeout(() => {
+          router.push({ name: 'login' })
+          isLoggingOut = false
+        }, 100)
+      }
     }
     return Promise.reject(error)
   }
