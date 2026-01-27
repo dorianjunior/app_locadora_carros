@@ -38,6 +38,14 @@ class CarroController extends Controller
             $carroRepository->selectAtributosRegistrosRelacionados('modelo');
         }
 
+        // Carregar relacionamento aninhado marca através de modelo
+        if ($request->has('atributos_marca')) {
+            $atributos_marca = 'modelo.marca:id,' . $request->atributos_marca;
+            $carroRepository->selectAtributosRegistrosRelacionados($atributos_marca);
+        } else {
+            $carroRepository->selectAtributosRegistrosRelacionados('modelo.marca');
+        }
+
         if ($request->has('filtro')) {
             $carroRepository->filtro($request->filtro);
         }

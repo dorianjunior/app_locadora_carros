@@ -31,6 +31,30 @@ class LocacaoController extends Controller
     {
         $locacaoRepository = new LocacaoRepository($this->locacao);
 
+        // Carregar relacionamento cliente
+        if ($request->has('atributos_cliente')) {
+            $atributos_cliente = 'cliente:id,' . $request->atributos_cliente;
+            $locacaoRepository->selectAtributosRegistrosRelacionados($atributos_cliente);
+        } else {
+            $locacaoRepository->selectAtributosRegistrosRelacionados('cliente');
+        }
+
+        // Carregar relacionamento carro
+        if ($request->has('atributos_carro')) {
+            $atributos_carro = 'carro:id,' . $request->atributos_carro;
+            $locacaoRepository->selectAtributosRegistrosRelacionados($atributos_carro);
+        } else {
+            $locacaoRepository->selectAtributosRegistrosRelacionados('carro');
+        }
+
+        // Carregar relacionamento modelo através do carro
+        if ($request->has('atributos_modelo')) {
+            $atributos_modelo = 'carro.modelo:id,' . $request->atributos_modelo;
+            $locacaoRepository->selectAtributosRegistrosRelacionados($atributos_modelo);
+        } else {
+            $locacaoRepository->selectAtributosRegistrosRelacionados('carro.modelo');
+        }
+
         if ($request->has('filtro')) {
             $locacaoRepository->filtro($request->filtro);
         }
