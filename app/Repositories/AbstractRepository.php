@@ -2,41 +2,68 @@
 
 namespace App\Repositories;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
-abstract class AbstractRepository {
+abstract class AbstractRepository
+{
+    protected Builder $query;
 
-    public function __construct(Model $model) {
-        $this->model = $model;
+    public function __construct(protected Model $model)
+    {
+        $this->resetQuery();
     }
 
-    public function selectAtributosRegistrosRelacionados($atributos) {
-        $this->model = $this->model->with($atributos);
-        //a query está sendo montada
+    public function selectAtributosRegistrosRelacionados(string|array $atributos): self
+    {
+        $this->query = $this->query->with($atributos);
+
+        return $this;
     }
 
-    public function filtro($filtros) {
-        $filtros = explode(';', $filtros);
-        
-        foreach($filtros as $key => $condicao) {
+    public function filtro(string $filtros): self
+    {
+        $filtrosArray = explode(';', $filtros);
 
-            $c = explode(':', $condicao);
-            $this->model = $this->model->where($c[0], $c[1], $c[2]);
-            //a query está sendo montada
+        foreach ($filtrosArray as $condicao) {
+            $parametros = explode(':', $condicao);
+
+            if (count($parametros) === 3) {
+                [$campo, $operador, $valor] = $parametros;
+                $this->query = $this->query->where($campo, $operador, $valor);
+            }
         }
+
+        return $this;
     }
 
-    public function selectAtributos($atributos) {
-        $this->model = $this->model->selectRaw($atributos);
+    public function selectAtributos(string $atributos): self
+    {
+        $this->query = $this->query->selectRaw($atributos);
+
+        return $this;
     }
 
-    public function getResultado() {
-        return $this->model->get();
+    public function getResultado(): Collection
+    {
+        $resultado = $this->query->get();
+        $this->resetQuery();
+
+        return $resultado;
     }
 
-    public function getResultadoPaginado($numeroRegistroPorPagina) {
-        return $this->model->paginate($numeroRegistroPorPagina);
+    public function getResultadoPaginado(int $numeroRegistroPorPagina): LengthAwarePaginator
+    {
+        $resultado = $this->query->paginate($numeroRegistroPorPagina);
+        $this->resetQuery();
+
+        return $resultado;
+    }
+
+    protected function resetQuery(): void
+    {
+        $this->query = $this->model->newQuery();
     }
 }
-
-?>
