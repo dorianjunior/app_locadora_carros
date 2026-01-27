@@ -319,7 +319,12 @@ const saveMarca = async () => {
     await fetchMarcas(pagination.value.current_page)
     showAlert.toast.success(editingMarca.value ? 'Marca atualizada com sucesso!' : 'Marca criada com sucesso!')
   } catch (error) {
-    showAlert.error(error.response?.data?.message || 'Erro ao salvar marca')
+    if (error.response?.data?.errors) {
+      const errors = Object.values(error.response.data.errors).flat()
+      showAlert.error(errors.join('\n'), 'Erro de validação')
+    } else {
+      showAlert.error(error.response?.data?.message || 'Erro ao salvar marca')
+    }
   } finally {
     saving.value = false
   }

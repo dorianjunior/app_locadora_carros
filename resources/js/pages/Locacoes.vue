@@ -290,10 +290,9 @@ const formatMoney = (value) => {
 
 const fetchClientes = async () => {
   try {
-    const response = await api.get('/cliente?atributos=id,nome')
-    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
-    const paginatedData = response.data.data
-    clientes.value = paginatedData.data || []
+    const response = await api.get('/cliente/all')
+    // Novo formato: {success, message, data: [...]}
+    clientes.value = response.data.data || []
   } catch (error) {
     clientes.value = []
   }
@@ -301,10 +300,9 @@ const fetchClientes = async () => {
 
 const fetchCarros = async () => {
   try {
-    const response = await api.get('/carro?atributos=id,placa,modelo_id&atributos_modelo=id,nome')
-    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
-    const paginatedData = response.data.data
-    carros.value = paginatedData.data || []
+    const response = await api.get('/carro/all')
+    // Novo formato: {success, message, data: [...]}
+    carros.value = response.data.data || []
   } catch (error) {
     carros.value = []
   }
@@ -401,7 +399,12 @@ const saveLocacao = async () => {
     await fetchLocacoes(pagination.value.current_page)
     showAlert.toast.success(editingLocacao.value ? 'Locação atualizada com sucesso!' : 'Locação criada com sucesso!')
   } catch (error) {
-    showAlert.error(error.response?.data?.message || 'Erro ao salvar locação')
+    if (error.response?.data?.errors) {
+      const errors = Object.values(error.response.data.errors).flat()
+      showAlert.error(errors.join('\n'), 'Erro de validação')
+    } else {
+      showAlert.error(error.response?.data?.message || 'Erro ao salvar locação')
+    }
   } finally {
     saving.value = false
   }

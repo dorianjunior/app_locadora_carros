@@ -323,7 +323,12 @@ const saveCliente = async () => {
     await fetchClientes(pagination.value.current_page)
     showAlert.toast.success(editingCliente.value ? 'Cliente atualizado com sucesso!' : 'Cliente criado com sucesso!')
   } catch (error) {
-    showAlert.error(error.response?.data?.message || 'Erro ao salvar cliente')
+    if (error.response?.data?.errors) {
+      const errors = Object.values(error.response.data.errors).flat()
+      showAlert.error(errors.join('\n'), 'Erro de validação')
+    } else {
+      showAlert.error(error.response?.data?.message || 'Erro ao salvar cliente')
+    }
   } finally {
     saving.value = false
   }

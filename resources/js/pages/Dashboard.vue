@@ -155,6 +155,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
+import { showAlert } from '@/utils/alert'
 
 const loading = ref(true)
 const stats = ref({
@@ -174,50 +175,29 @@ const fetchStats = async () => {
       api.get('/modelo'),
       api.get('/carro'),
       api.get('/cliente'),
-      api.get('/locacao')
+      api.get('/locacao?per_page=9999') // Buscar todas as locações para filtrar por status
     ])
 
-    const getMarcasData = () => {
-      const marcasData = marcas.data.data || marcas.data
-      return marcasData.data || marcasData || []
-    }
+    // Pegar o total da paginação (campo 'total' do Laravel)
+    const totalMarcas = marcas.data.data?.total || 0
+    const totalModelos = modelos.data.data?.total || 0
+    const totalCarros = carros.data.data?.total || 0
+    const totalClientes = clientes.data.data?.total || 0
 
-    const getModelosData = () => {
-      const modelosData = modelos.data.data || modelos.data
-      return modelosData.data || modelosData || []
-    }
-
-    const getCarrosData = () => {
-      const carrosData = carros.data.data || carros.data
-      return carrosData.data || carrosData || []
-    }
-
-    const getClientesData = () => {
-      const clientesData = clientes.data.data || clientes.data
-      return clientesData.data || clientesData || []
-    }
-
-    const getLocacoesData = () => {
-      const locacoesData = locacoes.data.data || locacoes.data
-      return locacoesData.data || locacoesData || []
-    }
-
-    const marcasArray = getMarcasData()
-    const modelosArray = getModelosData()
-    const carrosArray = getCarrosData()
-    const clientesArray = getClientesData()
-    const locacoesArray = getLocacoesData()
+    // Para locações, precisamos dos dados para filtrar por status
+    const locacoesArray = locacoes.data.data?.data || []
 
     stats.value = {
-      totalMarcas: marcasArray.length || 0,
-      totalModelos: modelosArray.length || 0,
-      totalCarros: carrosArray.length || 0,
-      totalClientes: clientesArray.length || 0,
+      totalMarcas,
+      totalModelos,
+      totalCarros,
+      totalClientes,
       locacoesAtivas: locacoesArray.filter(l => !l.data_final_realizado_periodo).length || 0,
       locacoesFinalizadas: locacoesArray.filter(l => l.data_final_realizado_periodo).length || 0
     }
   } catch (error) {
-    // Ignora erros
+    console.error('Erro ao carregar estatísticas:', error)
+    showAlert.error('Erro ao carregar estatísticas do dashboard')
   } finally {
     loading.value = false
   }

@@ -234,10 +234,9 @@ const formatNumber = (num) => {
 
 const fetchModelos = async () => {
   try {
-    const response = await api.get('/modelo?atributos=id,nome,marca_id&atributos_marca=id,nome')
-    // Novo formato: {success, message, data: {current_page, data: [...], ...}}
-    const paginatedData = response.data.data
-    modelos.value = paginatedData.data || []
+    const response = await api.get('/modelo/all')
+    // Novo formato: {success, message, data: [...]}
+    modelos.value = response.data.data || []
   } catch (error) {
     modelos.value = []
   }
@@ -319,7 +318,12 @@ const saveCarro = async () => {
     await fetchCarros(pagination.value.current_page)
     showAlert.toast.success(editingCarro.value ? 'Carro atualizado com sucesso!' : 'Carro criado com sucesso!')
   } catch (error) {
-    showAlert.error(error.response?.data?.message || 'Erro ao salvar carro')
+    if (error.response?.data?.errors) {
+      const errors = Object.values(error.response.data.errors).flat()
+      showAlert.error(errors.join('\n'), 'Erro de validação')
+    } else {
+      showAlert.error(error.response?.data?.message || 'Erro ao salvar carro')
+    }
   } finally {
     saving.value = false
   }

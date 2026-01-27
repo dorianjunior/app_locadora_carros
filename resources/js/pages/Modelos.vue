@@ -411,7 +411,12 @@ const saveModelo = async () => {
     await fetchModelos(pagination.value.current_page)
     showAlert.toast.success(editingModelo.value ? 'Modelo atualizado com sucesso!' : 'Modelo criado com sucesso!')
   } catch (error) {
-    showAlert.error(error.response?.data?.message || 'Erro ao salvar modelo')
+    if (error.response?.data?.errors) {
+      const errors = Object.values(error.response.data.errors).flat()
+      showAlert.error(errors.join('\n'), 'Erro de validação')
+    } else {
+      showAlert.error(error.response?.data?.message || 'Erro ao salvar modelo')
+    }
   } finally {
     saving.value = false
   }
