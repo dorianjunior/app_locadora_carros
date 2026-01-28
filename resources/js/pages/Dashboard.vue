@@ -170,7 +170,6 @@ const stats = ref({
 const fetchStats = async () => {
   loading.value = true
   try {
-    // Usar o novo endpoint de estatísticas do dashboard
     const response = await api.get('/dashboard/stats')
     const data = response.data.data
 
@@ -183,7 +182,6 @@ const fetchStats = async () => {
       locacoesFinalizadas: data.locacoes_finalizadas || 0
     }
   } catch (error) {
-    // Não exibir alerta para erro 401 (não autorizado), pois o interceptor já redireciona para login
     if (error.response?.status !== 401) {
       console.error('Erro ao carregar estatísticas:', error)
       showAlert.error('Erro ao carregar estatísticas do dashboard')
